@@ -19,13 +19,13 @@
     "@mdx-js/react": "^3.1.1",
     "clsx": "^2.1.1",
     "prism-react-renderer": "^2.4.1",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "~3.9.2",
     "@docusaurus/types": "~3.9.2",
-    "wrangler": "^4.60.0"
+    "wrangler": "^4.71.0"
   },
   "browserslist": {
     "production": [
