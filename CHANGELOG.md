@@ -1,0 +1,37 @@
+# Changelog
+
+
+## v0.1.0-pre.1
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v0.1.0-pre.0...v0.1.0-pre.1)
+
+### 🚀 Enhancements
+
+- Create initial astro site. ([6450423](https://github.com/lean-stack/linux-docs/commit/6450423))
+
+### 💅 Refactors
+
+- Move docusaurus app to backup folder. ([6212529](https://github.com/lean-stack/linux-docs/commit/6212529))
+
+### 🏡 Chore
+
+- Upgrade docusaurus. Update deps. ([af9ae97](https://github.com/lean-stack/linux-docs/commit/af9ae97))
+- Update deps. ([705742f](https://github.com/lean-stack/linux-docs/commit/705742f))
+
+## v0.1.0-pre.0
+
+[compare changes](https://github.com/lean-stack/lean-linux/compare/v0.1.0-pre.0...v0.1.0-pre.0)
+
+### 🚀 Enhancements
+
+- Create initial astro site. ([6450423](https://github.com/lean-stack/lean-linux/commit/6450423))
+
+### 💅 Refactors
+
+- Move docusaurus app to backup folder. ([6212529](https://github.com/lean-stack/lean-linux/commit/6212529))
+
+### 🏡 Chore
+
+- Upgrade docusaurus. Update deps. ([af9ae97](https://github.com/lean-stack/lean-linux/commit/af9ae97))
+- Update deps. ([705742f](https://github.com/lean-stack/lean-linux/commit/705742f))
+
