@@ -1,40 +1,50 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: Linux Unterlagen
+description: Deutschsprachige Dokumentation für den Einstieg in Linux und die Administration von Linux-Systemen.
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
+  tagline: Deutschsprachige Dokumentation für den Einstieg in Linux und die Administration von Linux-Systemen.
   actions:
-    - text: Example Guide
-      link: /guides/example/
+    - text: Zum Einstieg
+      link: /intro/was-ist-linux/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
-      icon: external
+    - text: Zu den Grundlagen
+      link: /basics/anmeldung/
+      icon: right-arrow
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
-
-## Next steps
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
-	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
-	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card>
+  <LinkCard
+    title="Einführung"
+    description="Was ist Linux? Was ist eine Distribution? Welche Varianten gibt es und welche passt zu mir?"
+    href="/intro/was-ist-linux/"
+  />
+  <LinkCard
+    title="Grundlagen"
+    description="Anmeldung, Shell, Hilfe zur Selbsthilfe, Verzeichnisse und Dateien – die wichtigsten Konzepte für den Alltag."
+    href="/basics/anmeldung/"
+  />
+  <LinkCard
+    title="Administration"
+    description="Benutzer, Berechtigungen, Dienste, Netzwerk – die Verwaltung von Linux-Systemen."
+    href="/administration/"
+  />
+</CardGrid>
+
+<CardGrid>
+  <Card title="Deutschsprachig" icon="translate">
+    Alle Inhalte auf Deutsch – von der ersten Anmeldung bis zur Systemadministration.
+  </Card>
+  <Card title="Praxisnah" icon="laptop">
+    Echte Kommandos, kommentierte Beispiele und Hinweise auf typische Fallstricke.
+  </Card>
+  <Card title="Strukturiert" icon="list-format">
+    Vom Konzept zum Kommando: Hintergründe werden erklärt, nicht nur Befehle aufgelistet.
+  </Card>
+  <Card title="Offen" icon="github">
+    Quelltext auf [GitHub](https://github.com/lean-stack/linux-docs). Fehler gefunden? Pull Request willkommen.
+  </Card>
 </CardGrid>
