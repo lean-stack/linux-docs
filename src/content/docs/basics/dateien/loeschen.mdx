@@ -19,6 +19,14 @@ rm datei.txt
 rm datei1.txt datei2.txt datei3.txt  # mehrere auf einmal
 ```
 
+Globs sind beim Löschen besonders praktisch – aber auch besonders gefährlich:
+
+```bash
+rm *.log          # alle Log-Dateien löschen
+rm tmp-*          # alle Dateien, die mit "tmp-" beginnen
+rm *.jpg *.png    # alle Bilder löschen
+```
+
 ## Verzeichnisse löschen
 
 Ein leeres Verzeichnis lässt sich mit `rmdir` entfernen:
@@ -53,7 +61,13 @@ rm -Ir ordner/     # rekursiv, einmalige Sammelwarnung – guter Kompromiss
 ```
 
 <Aside type="tip">
-Für kritische Löschaktionen empfiehlt es sich, zuerst mit `ls` oder `find` zu prüfen, welche Dateien betroffen wären – und erst dann `rm` auszuführen.
+Bei Globs empfiehlt es sich, das Muster zuerst mit `echo` oder `ls` zu prüfen – so sieht man genau, welche Dateien betroffen wären, bevor man löscht:
+
+```bash
+echo *.log        # zeigt, was der Glob trifft
+ls *.log          # zeigt es mit Details
+rm *.log          # erst dann löschen
+```
 </Aside>
 
 ## Was beim Löschen wirklich passiert

@@ -24,6 +24,14 @@ Wenn mehrere Quelldateien angegeben werden, **muss** das Ziel ein Verzeichnis se
 cp datei1.txt datei2.txt datei3.txt zielordner/
 ```
 
+Statt Dateinamen einzeln aufzuzählen, lassen sich Globs verwenden:
+
+```bash
+cp *.txt backup/          # alle .txt-Dateien kopieren
+cp *.jpg *.png bilder/    # alle Bilder kopieren
+cp bericht-202?.pdf archiv/  # z. B. bericht-2023.pdf, bericht-2024.pdf
+```
+
 ## Verzeichnisse kopieren: `-r`
 
 Soll ein ganzes Verzeichnis kopiert werden, ist die Option `-r` (*recursive*) erforderlich:

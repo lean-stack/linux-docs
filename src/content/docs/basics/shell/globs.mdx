@@ -1,0 +1,185 @@
+---
+title: Pathname Expansion (Globs)
+sidebar:
+  order: 4
+---
+
+import { Aside, FileTree } from '@astrojs/starlight/components';
+
+Glob-Muster (*Wildcards*) werden von der Shell zu einer Liste von Dateinamen expandiert, die auf das Muster passen. Das passiert **vor** der Ausführung des eigentlichen Befehls – das Programm sieht nur die fertige Liste, nicht das Muster.
+
+`echo` macht das gut sichtbar: Es gibt einfach aus, was die Shell ihm als Argumente übergibt.
+
+<FileTree>
+- beispiele/
+  - dokumente/
+  - bild.jpg
+  - brief.txt
+  - notizen.txt
+  - skript.sh
+</FileTree>
+
+```bash
+echo *
+# bild.jpg brief.txt dokumente notizen.txt skript.sh
+```
+
+Die Shell hat `*` expandiert und `echo` eine fertige Liste übergeben – als hätte man alle Namen einzeln eingetippt.
+
+<Aside type="note">
+Zwei Dinge fallen auf: Das Verzeichnis `dokumente` erscheint wie eine gewöhnliche Datei – `echo` kennt keinen Unterschied. Und Dateien, deren Name mit `.` beginnt (Dot-Files), tauchen gar nicht auf. Beides wird weiter unten erklärt.
+</Aside>
+
+## Die Wildcards
+
+### `*` – beliebig viele Zeichen
+
+`*` steht für eine beliebige Folge von Zeichen (auch leer):
+
+```bash
+echo *.txt
+# brief.txt notizen.txt
+
+echo b*
+# bild.jpg brief.txt
+
+echo *i*
+# bild.jpg brief.txt notizen.txt skript.sh
+```
+
+### `?` – genau ein Zeichen
+
+`?` steht für **genau ein** beliebiges Zeichen:
+
+```bash
+# Angenommen: log1.txt log2.txt log3.txt logA.txt run.sh sind vorhanden
+
+echo log?.txt
+# log1.txt log2.txt log3.txt logA.txt
+
+echo ???.sh
+# run.sh          (genau 3 Zeichen vor .sh)
+```
+
+### `[...]` – ein Zeichen aus einer Menge
+
+Eckige Klammern definieren eine Zeichenklasse – es passt genau **ein** Zeichen aus der angegebenen Menge:
+
+```bash
+# Angenommen: log1.txt log2.txt log3.txt logA.txt logB.txt sind vorhanden
+
+echo log[13].txt
+# log1.txt log3.txt               (nur 1 und 3)
+
+echo log[1-3].txt
+# log1.txt log2.txt log3.txt      (Bereich 1 bis 3)
+
+echo log[!0-9].txt
+# logA.txt logB.txt               (! negiert: kein Zeichen aus 0-9)
+```
+
+Zeichenklassen funktionieren auch mit Buchstaben und gemischten Mengen:
+
+```bash
+# Angenommen: main.c util.c parser.h config.h sind vorhanden
+
+echo *.[ch]
+# config.h main.c parser.h util.c
+```
+
+### POSIX-Zeichenklassen
+
+Vordefinierte Klassen in der Form `[:name:]` stehen für ganze Zeichenkategorien:
+
+```bash
+# Angenommen: bericht.txt README.md logA.txt 01-intro.md 02-basics.md sind vorhanden
+
+echo *[[:upper:]]*
+# README.md logA.txt              (enthält mindestens einen Großbuchstaben)
+
+echo [[:digit:]]*
+# 01-intro.md 02-basics.md        (beginnt mit einer Ziffer)
+```
+
+Häufig verwendete POSIX-Klassen:
+
+| Klasse | Bedeutung |
+|---|---|
+| `[:upper:]` | Großbuchstaben `A-Z` |
+| `[:lower:]` | Kleinbuchstaben `a-z` |
+| `[:alpha:]` | Alle Buchstaben |
+| `[:digit:]` | Ziffern `0-9` |
+| `[:alnum:]` | Buchstaben und Ziffern |
+| `[:space:]` | Leerzeichen, Tab, Newline |
+
+## Verzeichnisse und versteckte Dateien
+
+### Verzeichnisse
+
+`*` erfasst Verzeichnisse genauso wie Dateien – der Name erscheint ohne besondere Kennzeichnung in der Ausgabe:
+
+```bash
+echo *
+# bild.jpg brief.txt dokumente notizen.txt skript.sh
+#                    ^^^^^^^^^
+#                    Verzeichnis, sieht aus wie eine Datei
+```
+
+Ob ein Treffer eine Datei oder ein Verzeichnis ist, entscheidet nicht der Glob, sondern der Befehl, der die Liste verarbeitet.
+
+### Versteckte Dateien
+
+Dateien und Verzeichnisse, deren Name mit `.` beginnt, gelten unter Linux als **versteckt** und werden von Globs standardmäßig **nicht** erfasst – der Punkt muss explizit angegeben werden:
+
+```bash
+echo *
+# bild.jpg brief.txt dokumente notizen.txt skript.sh
+# (.bashrc, .profile, .ssh/ bleiben unsichtbar)
+
+echo .*
+# .bash_history .bashrc .profile .ssh
+
+echo .b*
+# .bash_history .bashrc
+```
+
+<Aside type="note">
+Das ist kein Zufall, sondern eine bewusste Konvention: Versteckte Dateien sind fast immer **Konfigurationsdateien und -verzeichnisse** – `.bashrc`, `.profile`, `.ssh/`, `.gitconfig` und viele mehr. Durch den führenden Punkt bleiben sie bei normaler Arbeit aus dem Weg. `ls` verhält sich genauso – erst `ls -a` zeigt sie.
+</Aside>
+
+## Kein Treffer
+
+Wenn kein Dateiname auf das Muster passt, lässt die bash das Muster standardmäßig **unverändert stehen**:
+
+```bash
+echo *.xyz
+# *.xyz       ← kein Treffer: das Muster bleibt literal
+```
+
+<Aside type="caution">
+Das ist eine häufige Fehlerquelle: `rm *.xyz` löscht bei fehlendem Treffer nicht einfach nichts, sondern versucht eine Datei namens `*.xyz` zu löschen – was meist zu einem Fehler führt. In Skripten lässt sich mit `shopt -s nullglob` erreichen, dass ein trefferloses Muster zu einer leeren Liste expandiert statt zum Literal.
+</Aside>
+
+## Quoting verhindert Expansion
+
+Wie bei Substitutionen verhindern Anführungszeichen die Expansion:
+
+```bash
+echo "*.txt"   # *.txt  ← doppelt: kein Glob, Variablen-Substitution wirkt noch
+echo '*.txt'   # *.txt  ← einfach: alles wörtlich
+echo \*.txt    # *.txt  ← Backslash escaped das einzelne Zeichen
+```
+
+## Globs sind keine regulären Ausdrücke
+
+Glob-Muster sehen regulären Ausdrücken ähnlich, funktionieren aber anders:
+
+| Glob | Regex-Äquivalent | Bedeutung |
+|---|---|---|
+| `*` | `.*` | beliebig viele Zeichen |
+| `?` | `.` | genau ein Zeichen |
+| `[abc]` | `[abc]` | ein Zeichen aus der Menge |
+
+<Aside type="tip">
+Wer mit `grep`, `sed` oder `awk` arbeitet, begegnet regulären Ausdrücken – dort gelten andere Regeln. Ein `*` in einem Glob und ein `*` in einem Regex bedeuten verschiedene Dinge.
+</Aside>

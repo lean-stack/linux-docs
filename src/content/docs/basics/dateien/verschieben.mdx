@@ -23,6 +23,13 @@ mv bericht.txt dokumente/neu.txt    # verschieben und gleichzeitig umbenennen
 mv datei1.txt datei2.txt zielordner/ # mehrere Dateien in einen Ordner verschieben
 ```
 
+Auch hier sind Globs möglich – und im Alltag der häufigste Weg, mehrere Dateien zu verschieben:
+
+```bash
+mv *.log /var/log/archiv/     # alle Log-Dateien in Archiv verschieben
+mv 2024-*.csv auswertung/     # alle CSV-Dateien eines Jahres verschieben
+```
+
 ## Der Inode – die Identität einer Datei
 
 Um zu verstehen, was `mv` intern tut, hilft ein Blick auf das Konzept des **Inodes**.
