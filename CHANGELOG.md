@@ -1,6 +1,16 @@
 # Changelog
 
 
+## v0.1.0
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v0.1.0-pre.2...v0.1.0)
+
+### 💅 Refactors
+
+- Add substitutionen page and remove unused docusaurus files. ([4650536](https://github.com/lean-stack/linux-docs/commit/4650536))
+- Add globs page and mention glob usage in file pages. ([a41f78e](https://github.com/lean-stack/linux-docs/commit/a41f78e))
+- Update landing page and remove scaffoled content. ([59989a4](https://github.com/lean-stack/linux-docs/commit/59989a4))
+
 ## v0.1.0-pre.2
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v0.1.0-pre.1...v0.1.0-pre.2)
