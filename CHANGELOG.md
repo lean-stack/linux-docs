@@ -1,6 +1,14 @@
 # Changelog
 
 
+## v0.1.0-pre.2
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v0.1.0-pre.1...v0.1.0-pre.2)
+
+### 💅 Refactors
+
+- Recreate many content from old docs. ([9e79f0e](https://github.com/lean-stack/linux-docs/commit/9e79f0e))
+
 ## v0.1.0-pre.1
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v0.1.0-pre.0...v0.1.0-pre.1)
