@@ -1,0 +1,198 @@
+---
+title: Shell-Substitutionen
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Bevor die Shell einen Befehl ausführt, wertet sie die Eingabe aus und ersetzt bestimmte Ausdrücke durch ihren berechneten Wert. Dieser Vorgang heißt **Substitution** (oder Expansion). Das Ergebnis sieht für das aufgerufene Programm so aus, als hätte der Benutzer den ersetzten Wert direkt eingetippt.
+
+`echo` gibt seine Argumente einfach auf dem Terminal aus – damit lässt sich hervorragend zeigen, was die Shell vor der Ausführung mit einer Eingabe macht.
+
+## Tilde-Substitution
+
+Die Tilde `~` wird durch das Heimverzeichnis des aktuellen Benutzers ersetzt:
+
+```bash
+echo ~
+# /home/alice
+
+echo ~/dokumente
+# /home/alice/dokumente
+
+echo ~root
+# /root
+```
+
+## Variablen-Substitution
+
+Variablen werden mit `$` oder `${...}` referenziert. Die Shell ersetzt den Ausdruck durch den aktuellen Wert der Variablen:
+
+```bash
+echo $HOME
+# /home/alice
+
+echo $USER
+# alice
+
+echo $SHELL
+# /bin/bash
+```
+
+Die geschweifte Klammerform `${VAR}` ist nötig, wenn direkt dahinter noch Text folgt:
+
+```bash
+VERSION=24
+echo "Ubuntu${VERSION}.04"
+# Ubuntu24.04
+
+# ohne Klammern würde die Shell nach der Variable $VERSION04 suchen:
+echo "Ubuntu$VERSION.04"
+# Ubuntu24.04   ← funktioniert zufällig, weil .04 kein gültiger Variablenname-Anfang ist
+
+echo "Ubuntu$VERSIONtest"
+# Ubuntu        ← $VERSIONtest existiert nicht → leerer String
+echo "Ubuntu${VERSION}test"
+# Ubuntu24test  ← korrekt
+```
+
+### Eigene Variablen
+
+Variablen werden ohne `$` gesetzt, mit `$` gelesen:
+
+```bash
+NAME="Linux"
+echo "Hallo $NAME"
+# Hallo Linux
+
+HEUTE=$(date +%F)     # Wert einer Variablen per Command-Substitution setzen
+echo "Datum: $HEUTE"
+# Datum: 2026-03-17
+```
+
+<Aside type="note">
+Variablen gelten nur in der aktuellen Shell-Sitzung. Mit `export` werden sie an Kind-Prozesse (z. B. gestartete Programme) weitergegeben:
+
+```bash
+export NAME="Linux"
+```
+</Aside>
+
+## Kommando-Substitution
+
+Mit `$(...)` wird ein Befehl ausgeführt und seine Ausgabe an Ort und Stelle eingesetzt:
+
+```bash
+echo $(whoami)
+# alice
+
+echo "Heute ist $(date +%A), der $(date +%d. %B %Y)"
+# Heute ist Dienstag, der 17. März 2026
+
+echo "Kernel: $(uname -r)"
+# Kernel: 6.8.0-51-generic
+
+echo "Dateien hier: $(ls | wc -l)"
+# Dateien hier: 42
+```
+
+<Aside type="note">
+Ältere Skripte verwenden statt `$(...)` Backticks: `` `befehl` ``. Beide sind gleichwertig, aber `$(...)` ist lesbarer und lässt sich verschachteln:
+
+```bash
+echo $(echo $(whoami))   # verschachtelt – mit Backticks unübersichtlich
+```
+</Aside>
+
+## Arithmetik-Substitution
+
+Mit `$((...))` wertet die Shell einen arithmetischen Ausdruck aus:
+
+```bash
+echo $((3 + 4))
+# 7
+
+echo $((10 * 5 - 3))
+# 47
+
+PREIS=49
+MWST=19
+echo "Brutto: $(( PREIS * (100 + MWST) / 100 )) €"
+# Brutto: 58 €
+```
+
+<Aside type="note">
+Bash rechnet nur mit **ganzen Zahlen**. Für Dezimalrechnung braucht man externe Werkzeuge wie `bc`:
+
+```bash
+echo "scale=2; 49 * 1.19" | bc
+# 58.31
+```
+</Aside>
+
+## Quoting – wann wird substituiert?
+
+Anführungszeichen steuern, ob Substitutionen stattfinden:
+
+| Form | Substitution | Beispiel | Ausgabe |
+|---|---|---|---|
+| Kein Quoting | ja | `echo $USER` | `alice` |
+| Doppelte Anführungszeichen `"..."` | ja | `echo "$USER"` | `alice` |
+| Einfache Anführungszeichen `'...'` | **nein** | `echo '$USER'` | `$USER` |
+
+```bash
+echo "Benutzer: $USER"    # Substitution findet statt
+# Benutzer: alice
+
+echo 'Benutzer: $USER'    # alles wörtlich
+# Benutzer: $USER
+
+echo "Heute: $(date +%F)" # auch Command-Substitution in doppelten Anführungszeichen
+# Heute: 2026-03-17
+```
+
+<Aside type="tip">
+Variablen sollten in Skripten **immer in doppelten Anführungszeichen** stehen: `"$VAR"`. Ohne Anführungszeichen kann ein Wert mit Leerzeichen als mehrere Argumente interpretiert werden:
+
+```bash
+DATEI="mein dokument.txt"
+ls $DATEI    # → ls mein dokument.txt  (zwei Argumente!)
+ls "$DATEI"  # → ls "mein dokument.txt" (ein Argument, korrekt)
+```
+</Aside>
+
+## Shell-Debugging mit `set -x`
+
+Wenn unklar ist, was die Shell aus einer Eingabe macht, lässt sich mit `set -x` das **Tracing** einschalten. Die Shell gibt dann jede Zeile aus, bevor sie sie ausführt – nach allen Substitutionen:
+
+```bash
+set -x
+
+NAME="Welt"
+echo "Hallo $NAME, heute ist $(date +%A)"
+
+set +x   # Tracing wieder ausschalten
+```
+
+Ausgabe:
+
+```
++ NAME=Welt
++ date +%A
++ echo 'Hallo Welt, heute ist Dienstag'
+Hallo Welt, heute ist Dienstag
++ set +x
+```
+
+Das `+` am Zeilenanfang markiert Zeilen, die vom Tracing stammen. Man sieht: Die Shell hat zuerst `date +%A` ausgeführt und dessen Ausgabe in den `echo`-Befehl eingesetzt – genau das ist Kommando-Substitution.
+
+<Aside type="tip">
+`set -x` ist in Shell-Skripten besonders wertvoll zur Fehlersuche. Direkt in der Shebang-Zeile des Skripts aktiviert, traced es die gesamte Ausführung:
+
+```bash
+#!/bin/bash -x
+```
+
+Oder selektiv nur einen kritischen Abschnitt einschließen, um die Ausgabe überschaubar zu halten.
+</Aside>
