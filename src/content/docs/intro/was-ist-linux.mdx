@@ -1,0 +1,66 @@
+---
+title: Was ist Linux?
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Wenn man salopp von einem „Linux-Betriebssystem" spricht, ist das eigentlich ungenau. Hinter dem Begriff **Linux** steckt zunächst nur der innere Kern des Systems – der Kernel. Erst im Zusammenspiel mit weiteren Schichten entsteht ein vollständiges Betriebssystem.
+
+## Der Kern: der Linux-Kernel
+
+Der Kernel ist das Herzstück. Er vermittelt zwischen Hardware und Software und übernimmt unter anderem folgende Aufgaben:
+
+- **Geräte-Ansteuerung** – Festplatten, Netzwerkkarten, Prozessoren, Grafikkarten u. v. m.
+- **Speicher-Verwaltung** – Zuteilung und Freigabe von RAM
+- **Prozess-Verwaltung** – welches Programm wann Rechenzeit bekommt
+- **Multitasking** – gleichzeitiger Betrieb mehrerer Programme
+- **Sicherheit** – wer und welches Programm darf was?
+- **Ressourcen-Limits** – wie viel CPU, RAM etc. darf ein Prozess beanspruchen?
+
+All das wird über klar definierte Programmierschnittstellen (*Syscalls*) dem sogenannten **Userland** zur Verfügung gestellt – dem Bereich, in dem normale Programme und Benutzer agieren.
+
+<Aside type="note">
+Die offizielle Homepage des Kernel-Projekts ist [kernel.org](https://kernel.org). Dort werden alle Kernel-Versionen veröffentlicht und dokumentiert.
+</Aside>
+
+## Die Werkzeuge: GNU
+
+Mit dem Kernel allein kann ein Benutzer wenig anfangen. Es braucht Werkzeuge – Programme, mit denen man Dateien kopiert, Texte bearbeitet oder das System konfiguriert. Diese Werkzeuge stellt das **GNU**-Projekt bereit.
+
+GNU (ein rekursives Akronym für *GNU's Not Unix*) liefert die Standard-Shell **bash** sowie Hunderte von Kommandozeilen-Werkzeugen. Diese werden direkt in der Shell eingegeben – einem textbasierten Interface mit blinkendem Cursor:
+
+```bash
+# Dateien auflisten
+ls -la
+
+# Datei kopieren
+cp datei.txt /media/usb/
+
+# Text in Dateien suchen
+grep "Fehler" /var/log/syslog
+```
+
+Die Kombination aus Linux-Kernel und GNU-Werkzeugen bildet das, was man technisch korrekt als **GNU/Linux** bezeichnet.
+
+<Aside type="tip">
+Das GNU-Projekt bezeichnet sich selbst als vollständiges Betriebssystem – mit einem eigenen Kernel namens **GNU Hurd**. Dieser hat in der Praxis jedoch keine Relevanz. In der Realität läuft GNU fast ausschließlich auf dem Linux-Kernel. Mehr auf [gnu.org](https://www.gnu.org).
+</Aside>
+
+## Das Drumherum: Anwendungen
+
+Auf einem System mit grafischer Oberfläche (Desktop) erwarten Benutzer vertraute Programme:
+
+| Aufgabe | Beispiele unter GNU/Linux |
+|---|---|
+| Browser | Firefox, Chromium |
+| Office | LibreOffice, OnlyOffice |
+| E-Mail | Thunderbird, Evolution |
+| Kommunikation | Element, Signal Desktop |
+
+Für nahezu jeden Anwendungsfall gibt es freie Software, die Windows-Alternativen gleichwertig oder überlegen ist.
+
+<Aside type="caution">
+Einige proprietäre Programme laufen unter Linux **nicht nativ** – darunter Microsoft Office und Adobe Photoshop. Wer darauf angewiesen ist, sollte vorab prüfen, ob Alternativen (LibreOffice, GIMP) oder Kompatibilitätslösungen wie **Wine** infrage kommen.
+</Aside>
+
+Auf **Servern** hingegen entfällt die grafische Oberfläche meist vollständig. Dort ist GNU/Linux mit Abstand das am weitesten verbreitete Betriebssystem – von kleinen Heimservern bis hin zu allen Top-500-Supercomputern der Welt.

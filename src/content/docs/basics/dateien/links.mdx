@@ -1,0 +1,104 @@
+---
+title: Links
+sidebar:
+  order: 6
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Linux kennt zwei Arten von Links: **Hard-Links** und **symbolische Links** (Symlinks). Beide erlauben es, dass eine Datei unter mehreren Namen erreichbar ist – aber auf grundlegend unterschiedliche Weise.
+
+## Hard-Links
+
+Ein Hard-Link ist ein weiterer **Verzeichniseintrag**, der auf denselben Inode zeigt wie die Originaldatei. Es gibt kein Original und keine Kopie – beide Namen sind vollständig gleichwertig.
+
+```bash
+ln quelle.txt hard-link.txt
+```
+
+```
+Verzeichnis:
+  "quelle.txt"    →  Inode 48291
+  "hard-link.txt" →  Inode 48291   ← derselbe Inode!
+```
+
+Da beide Einträge denselben Inode referenzieren, gilt:
+
+- Änderungen über einen Namen sind sofort über den anderen sichtbar
+- Löschen eines Eintrags mit `rm` entfernt nur diesen Verzeichniseintrag – der Inode (und die Daten) bleiben bestehen, solange noch mindestens ein weiterer Name darauf zeigt
+- Die Anzahl der Verweise auf einen Inode (*Link Count*) ist in der `ls -l`-Ausgabe in der zweiten Spalte sichtbar
+
+```bash
+ls -li quelle.txt hard-link.txt
+# 48291 -rw-r--r-- 2 alice alice 1234 Mär 17 10:00 hard-link.txt
+# 48291 -rw-r--r-- 2 alice alice 1234 Mär 17 10:00 quelle.txt
+#                  ^--- Link Count = 2
+```
+
+### Warum Hard-Links nicht über Partitionsgrenzen funktionieren
+
+Inodes sind **dateisystemlokal** – jedes Dateisystem (jede Partition, jedes eingehängte Laufwerk) verwaltet seine eigene Inode-Tabelle mit eigenen Nummern. Inode 48291 auf `/home` und Inode 48291 auf `/media/usb` sind völlig verschiedene Dinge.
+
+Ein Hard-Link ist nichts anderes als eine Inode-Nummer in einem Verzeichniseintrag. Eine Inode-Nummer aus einem anderen Dateisystem referenzieren – das ist schlicht nicht möglich.
+
+```bash
+ln /home/alice/datei.txt /media/usb/link.txt
+# ln: /media/usb/link.txt: ungültige partitionsübergreifende Verknüpfung
+```
+
+<Aside type="note">
+Hard-Links auf **Verzeichnisse** sind aus ähnlichen Gründen (und zur Vermeidung von Zyklen im Verzeichnisbaum) bei den meisten Dateisystemen ebenfalls nicht erlaubt. Die einzigen Ausnahmen sind `.` und `..`, die intern als Hard-Links implementiert sind.
+</Aside>
+
+## Symbolische Links (Symlinks)
+
+Ein symbolischer Link ist eine **eigenständige Datei** mit einem eigenen Inode, deren Inhalt ein Pfad zu einer anderen Datei oder einem Verzeichnis ist. Das Dateisystem folgt diesem Pfad automatisch.
+
+```bash
+ln -s ziel.txt symlink.txt
+ln -s /etc/nginx/nginx.conf ~/nginx.conf  # absoluter Pfad
+ln -s ../freigabe/ verknuepfung/          # relativer Pfad
+```
+
+```
+Verzeichnis:
+  "ziel.txt"     →  Inode 48291  (normale Datei, Daten liegen hier)
+  "symlink.txt"  →  Inode 51002  (Symlink, enthält den Text "ziel.txt")
+```
+
+Symlinks anzeigen:
+
+```bash
+ls -l symlink.txt
+# lrwxrwxrwx 1 alice alice 8 Mär 17 10:05 symlink.txt -> ziel.txt
+#  ^--- 'l' für Link
+```
+
+### Hard-Link vs. Symlink im Vergleich
+
+| Eigenschaft | Hard-Link | Symbolischer Link |
+|---|---|---|
+| Eigener Inode | Nein (teilt Inode mit Ziel) | Ja |
+| Funktioniert über Partitionen | **Nein** | Ja |
+| Funktioniert auf Verzeichnisse | Nein | Ja |
+| Bleibt gültig wenn Ziel gelöscht | Ja (Daten bleiben erhalten) | **Nein** (dangling symlink) |
+| Sichtbar als Link in `ls -l` | Nein | Ja (`->`) |
+
+<Aside type="tip">
+Symlinks werden in der Praxis deutlich häufiger eingesetzt als Hard-Links – zum Beispiel um eine versionierte Bibliothek unter einem stabilen Namen verfügbar zu machen:
+
+```bash
+ln -s libfoo.so.2.4.1 libfoo.so
+ln -s libfoo.so.2.4.1 libfoo.so.2
+```
+
+So können Programme, die `libfoo.so` suchen, immer die aktuelle Version finden, ohne neu konfiguriert werden zu müssen.
+</Aside>
+
+<Aside type="caution">
+Ein Symlink, dessen Zieldatei nicht mehr existiert, heißt **dangling symlink** (hängender Link). Er ist in `ls` oft rot markiert und führt bei jedem Zugriff zu einem Fehler. Mit `find` lassen sie sich aufspüren:
+
+```bash
+find . -xtype l  # zeigt alle dangling symlinks
+```
+</Aside>

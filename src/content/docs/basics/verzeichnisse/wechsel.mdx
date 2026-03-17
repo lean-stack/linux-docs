@@ -1,0 +1,46 @@
+---
+title: Verzeichniswechsel
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Mit `cd` (*Change Directory*) wechselt man das aktuelle Arbeitsverzeichnis.
+
+## Grundlegende Verwendung
+
+```bash
+cd pfad
+```
+
+`pfad` kann absolut oder relativ sein:
+
+```bash
+cd /etc                  # absolut: wechselt direkt nach /etc
+cd unterordner           # relativ: wechselt in einen Unterordner
+cd ../nachbar            # relativ: eine Ebene hoch, dann in "nachbar"
+```
+
+## Sonderformen
+
+| Befehl | Wechselt nach … |
+|---|---|
+| `cd` | Heimverzeichnis (`~`) |
+| `cd ~` | Heimverzeichnis (`~`) |
+| `cd $HOME` | Heimverzeichnis (`~`) |
+| `cd -` | Vorheriges Verzeichnis |
+
+```bash
+cd /var/log    # nach /var/log wechseln
+cd /etc        # nach /etc wechseln
+cd -           # zurück nach /var/log
+```
+
+<Aside type="tip">
+`cd -` ist besonders praktisch, wenn man häufig zwischen zwei weit auseinanderliegenden Verzeichnissen hin- und herspringt. Es entspricht einem "Zurück"-Button für das Verzeichnis.
+</Aside>
+
+<Aside type="note">
+Bei `cd ~` und `cd $HOME` ersetzt die Shell das `~` bzw. `$HOME` **vor** der Ausführung durch den tatsächlichen Pfad. Dieser Mechanismus heißt **Substitution** und gilt für alle Shell-Variablen und Sonderzeichen in der Kommandozeile. Im Kern sind beide Varianten also ein gewöhnliches `cd /home/alice`.
+</Aside>

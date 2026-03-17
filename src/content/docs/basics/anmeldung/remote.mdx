@@ -1,0 +1,103 @@
+---
+title: Entfernte Anmeldung (SSH)
+sidebar:
+  order: 3
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Die entfernte Anmeldung (*Remote Login*) ermöglicht den Zugriff auf ein Linux-System über das Netzwerk – ohne physischen Zugang zum Gerät. Der Standard dafür ist **SSH** (Secure Shell): eine verschlüsselte Verbindung, über die eine vollständige Shell-Sitzung auf dem Zielrechner geöffnet wird.
+
+## Grundlegende Verbindung
+
+```bash
+ssh benutzername@hostname
+```
+
+`hostname` kann eine IP-Adresse oder ein DNS-Name sein:
+
+```bash
+# Mit IP-Adresse
+ssh alice@192.168.1.42
+
+# Mit Hostnamen
+ssh alice@server.beispiel.de
+
+# Wenn Benutzername lokal und remote identisch sind, kann er entfallen
+ssh server.beispiel.de
+```
+
+Nach dem Verbindungsaufbau erscheint – nach Eingabe des Passworts – der gewohnte Shell-Prompt auf dem entfernten System.
+
+<Aside type="note">
+SSH ist heute auch unter **Windows** standardmäßig als Kommandozeilen-Client installiert (seit Windows 10). Der Befehl `ssh` funktioniert in PowerShell und der Eingabeaufforderung identisch wie unter Linux.
+</Aside>
+
+## Voraussetzungen
+
+Damit eine SSH-Verbindung funktioniert, müssen zwei Bedingungen erfüllt sein:
+
+1. Auf dem **Zielrechner** muss der SSH-Dienst laufen (`sshd`)
+2. Der **Port 22** (Standard-SSH-Port) muss in der Firewall erreichbar sein
+
+Den Status des SSH-Dienstes prüft man auf dem Zielrechner mit:
+
+```bash
+systemctl status ssh
+```
+
+## Schlüsselbasierte Authentifizierung
+
+Statt eines Passworts kann SSH mit einem **Schlüsselpaar** (Public/Private Key) authentifizieren. Das ist sowohl sicherer als auch komfortabler – kein Passwort-Eingabe bei jedem Login.
+
+<Tabs>
+  <TabItem label="1. Schlüsselpaar erstellen">
+    ```bash
+    # Ed25519-Schlüssel erstellen (empfohlen)
+    ssh-keygen -t ed25519 -C "alice@meinrechner"
+
+    # Speicherort und optionale Passphrase bestätigen/eingeben
+    # Ergebnis: ~/.ssh/id_ed25519 (privat) und ~/.ssh/id_ed25519.pub (öffentlich)
+    ```
+  </TabItem>
+  <TabItem label="2. Public Key übertragen">
+    ```bash
+    # Öffentlichen Schlüssel auf den Zielrechner kopieren
+    ssh-copy-id alice@server.beispiel.de
+
+    # Alternativ manuell: Inhalt von ~/.ssh/id_ed25519.pub
+    # an ~/.ssh/authorized_keys auf dem Zielrechner anhängen
+    ```
+  </TabItem>
+  <TabItem label="3. Verbinden ohne Passwort">
+    ```bash
+    # Ab jetzt kein Passwort mehr nötig
+    ssh alice@server.beispiel.de
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="tip">
+Für häufig genutzte Server lohnt sich eine Konfigurationsdatei `~/.ssh/config`:
+
+```
+Host meinserver
+    HostName server.beispiel.de
+    User alice
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+Danach reicht einfach `ssh meinserver`.
+</Aside>
+
+## Sicherheitshinweise
+
+<Aside type="caution">
+Der direkte SSH-Login als **`root`** ist standardmäßig deaktiviert – und sollte es bleiben. Administrative Aufgaben werden nach der Anmeldung als normaler Benutzer über `sudo` ausgeführt.
+</Aside>
+
+Weitere empfohlene Härtungsmaßnahmen für den SSH-Dienst (Thema Administration):
+
+- Passwort-Authentifizierung deaktivieren (nur Schlüssel erlauben)
+- Standard-Port 22 auf einen anderen Port verlegen
+- Fail2ban installieren, um Brute-Force-Angriffe zu blockieren

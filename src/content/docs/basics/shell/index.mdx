@@ -1,0 +1,77 @@
+---
+title: Einführung Shell
+sidebar:
+  order: 1
+  label: Einführung
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Nach der Anmeldung begrüßt uns die **Shell** – ein Programm, das Befehle entgegennimmt, interpretiert und ausführt. Sie ist die zentrale Schnittstelle zur Arbeit mit einem Linux-System.
+
+<Aside type="tip">
+Das gilt insbesondere nach einer lokalen Konsolen-Anmeldung oder einer SSH-Verbindung. Bei einer grafischen Anmeldung muss zunächst ein Terminal-Emulator geöffnet werden, um eine Shell-Sitzung zu starten.
+</Aside>
+
+## Die bash
+
+Die Standard-Shell unter Linux ist die **bash** (*Bourne-Again Shell*). Sie ist auf nahezu jedem Linux-System vorhanden und die sichere Wahl für Skripte und interaktive Arbeit.
+
+Daneben existieren weitere Shells:
+
+| Shell | Besonderheit |
+|---|---|
+| `bash` | Standard; weit verbreitet; gut dokumentiert |
+| `zsh` | Komfortabel; mächtige Autovervollständigung; macOS-Standard |
+| `fish` | Anfängerfreundlich; modernes Design |
+| `sh` | POSIX-kompatibel; minimalistisch; gut für portable Skripte |
+| `dash` | Schlanke `sh`-Implementierung; oft als `/bin/sh` unter Ubuntu |
+
+Jeder Benutzer hat eine konfigurierte **Default-Shell**, die bei der Anmeldung automatisch gestartet wird. Sie ist in `/etc/passwd` hinterlegt und lässt sich mit `chsh` ändern.
+
+## Der Prompt
+
+Vor dem blinkenden Cursor steht der **Prompt** – die Eingabeaufforderung. Er zeigt Kontextinformationen und ist konfigurierbar. Die bash-Standardform:
+
+```
+alice@server:~$
+```
+
+| Zeichen | Bedeutung |
+|---|---|
+| `alice` | Angemeldeter Benutzer |
+| `server` | Hostname |
+| `~` | Aktuelles Verzeichnis (`~` = Heimverzeichnis) |
+| `$` | Normaler Benutzer |
+| `#` | Superuser (`root`) |
+
+Der `#`-Prompt ist eine bewusste Warnung: Befehle als `root` wirken ohne Einschränkungen auf das gesamte System.
+
+## Shell-Modi
+
+Die Shell läuft in verschiedenen Modi, die bestimmen, welche Konfigurationsdateien geladen werden:
+
+| Modus | Wann | Konfiguration |
+|---|---|---|
+| **Login-Shell** | Nach `ssh`- oder Konsolen-Anmeldung | `~/.bash_profile`, `~/.profile` |
+| **Interaktive Shell** | Im Terminal-Emulator, ohne Login | `~/.bashrc` |
+| **Script-Shell** | Beim Ausführen eines Shell-Skripts | keine Benutzerkonfiguration |
+
+<Aside type="note">
+Ob eine Shell eine Login-Shell ist, lässt sich prüfen:
+
+```bash
+echo $0
+# -bash   ← führendes Minus = Login-Shell
+# bash    ← kein Minus = interaktive Shell ohne Login
+```
+</Aside>
+
+## Shell beenden
+
+```bash
+exit      # beendet jede Shell-Sitzung
+logout    # nur in einer Login-Shell
+```
+
+Alternativ: `Strg`+`D` sendet das EOF-Signal (*End of File*) – die Shell interpretiert das als „keine weiteren Eingaben" und beendet sich.

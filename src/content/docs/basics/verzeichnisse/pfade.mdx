@@ -1,0 +1,79 @@
+---
+title: Pfade
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Ein einziger Verzeichnisbaum
+
+Das Linux-Dateisystem kennt – anders als Windows – **keine Laufwerksbuchstaben** wie `C:` oder `D:`. Stattdessen gibt es nur einen einzigen Verzeichnisbaum mit dem Wurzelordner `/` an der Spitze.
+
+Weitere Festplatten, Partitionen, USB-Sticks oder Netzlaufwerke werden nicht als eigene Laufwerke sichtbar, sondern an einer beliebigen Stelle im Baum **eingehängt** (*gemountet*). Von außen ist nicht erkennbar, auf welchem physischen Datenträger ein bestimmter Ordner liegt.
+
+```
+/
+├── etc/        → auf der Systempartition
+├── home/       → eventuell eigene Partition
+│   └── alice/
+├── media/
+│   └── usb/    → eingehängter USB-Stick
+└── var/        → eventuell eigene Partition
+```
+
+<Aside type="note">
+Das Einbinden von Laufwerken und Partitionen in den Verzeichnisbaum nennt sich **mounten**. Genauso wird das Trennen der Verbindung als **unmounten** bezeichnet. Das Thema wird in der Sektion Administration vertieft.
+</Aside>
+
+## Absolute Pfade
+
+Ein absoluter Pfad beschreibt den vollständigen Weg von der Wurzel bis zur Zieldatei oder zum Zielordner. Er beginnt immer mit `/`.
+
+```bash
+/etc/passwd           # Datei mit lokalen Benutzern
+/etc/ssh/sshd_config  # Konfigurationsdatei des SSH-Dienstes
+/usr/share/zoneinfo   # Verzeichnis mit Zeitzonen-Dateien
+/home/alice/dokumente # Ordner im Heimverzeichnis von alice
+```
+
+Absolute Pfade funktionieren unabhängig davon, wo man sich gerade im Baum befindet.
+
+## Relative Pfade
+
+Ein relativer Pfad geht vom **aktuellen Arbeitsverzeichnis** aus. Er beginnt nicht mit `/`.
+
+```bash
+unterordner/datei.txt    # Datei in einem Unterordner des aktuellen Verzeichnisses
+./unterordner/datei.txt  # identisch – ./ macht den relativen Bezug explizit
+../andere-datei.txt      # Datei im übergeordneten Verzeichnis
+../../config.yml         # zwei Ebenen nach oben
+```
+
+Die zwei Sonderbezeichnungen:
+
+| Kürzel | Bedeutung |
+|---|---|
+| `.` | Aktuelles Verzeichnis |
+| `..` | Übergeordnetes (Eltern-) Verzeichnis |
+
+<Aside type="tip">
+Im obersten Ordner `/` zeigt `..` wieder auf `/` selbst – nach oben geht es nicht weiter.
+</Aside>
+
+## Sonderzeichen in Pfaden
+
+Neben `.` und `..` gibt es weitere Abkürzungen, die die Shell beim Ausführen eines Befehls automatisch ersetzt (*Substitution*):
+
+| Zeichen | Bedeutet | Beispiel |
+|---|---|---|
+| `~` | Heimverzeichnis des aktuellen Benutzers | `~/dokumente` |
+| `~alice` | Heimverzeichnis von Benutzer `alice` | `~alice/projekte` |
+| `$HOME` | Heimverzeichnis (als Umgebungsvariable) | `$HOME/.bashrc` |
+
+```bash
+# Alle drei sind gleichwertig (für den aktuellen Benutzer):
+ls /home/alice
+ls ~
+ls $HOME
+```

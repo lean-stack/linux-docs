@@ -1,0 +1,176 @@
+---
+title: Linux-Distributionen
+---
+
+import { Aside, FileTree, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Kernel und GNU-Werkzeuge sind Rohmaterial. Um daraus ein installierbares, benutzbares System zu machen, braucht es jemanden, der alles zusammenstellt, konfiguriert und ausliefert. Genau das ist die Aufgabe einer **Linux-Distribution**.
+
+## Was ist eine Distribution?
+
+Eine Distribution (kurz: *Distro*) bündelt:
+
+- den Linux-Kernel in einer bestimmten Version
+- GNU-Werkzeuge und Systembibliotheken
+- einen **Paketmanager** zur Software-Verwaltung
+- vorinstallierte Anwendungen und Konfigurationen
+- ein **Installationsprogramm** (Installer)
+
+Der letzte Punkt ist entscheidend: Eine Distribution ist im Wesentlichen eine **Installationseinheit**. Ohne Distribution müsste man Kernel, Compiler, Shell und jeden einzelnen Befehl manuell herunterladen, kompilieren und einrichten. Die Distribution nimmt einem das ab und liefert ein sofort nutzbares System.
+
+Nach der Installation ergibt sich typischerweise folgende Verzeichnisstruktur (unabhängig von der gewählten Distro – das ist Linux-Standard):
+
+<FileTree>
+- / (Wurzelverzeichnis)
+  - bin/ grundlegende Systembefehle (ls, cp, bash, …)
+  - etc/ systemweite Konfigurationsdateien
+  - home/ persönliche Verzeichnisse der Benutzer
+    - alice/
+    - bob/
+  - var/ variable Daten (Logs, Datenbanken, Caches)
+    - log/
+  - usr/ installierte Programme und Bibliotheken
+    - bin/
+    - lib/
+  - tmp/ temporäre Dateien (wird beim Reboot geleert)
+</FileTree>
+
+<Aside type="note">
+Diese Struktur ist im **Filesystem Hierarchy Standard (FHS)** festgelegt, an den sich nahezu alle Distributionen halten. Ein System, das man auf Debian gelernt hat, sieht unter Rocky Linux genauso aus.
+</Aside>
+
+## Die wichtigsten Distributionen
+
+### Historische Wurzeln
+
+Die meisten heute relevanten Distributionen lassen sich auf wenige Ur-Distros zurückführen:
+
+| Distribution | Jahr | Bedeutung |
+|---|---|---|
+| **Slackware** | 1993 | Älteste noch aktive Distro; minimalistisch, manuell |
+| **Debian** | 1993 | Basis für Ubuntu und hunderte weitere Distros; community-getrieben |
+| **Red Hat** | 1994 | Grundlage für Fedora, CentOS, RHEL; prägte den Enterprise-Markt |
+| **SUSE** | 1994 | Stark in Europa und im Enterprise-Bereich verbreitet |
+
+### Heute relevante Distributionen
+
+**Debian-Familie:**
+- **Ubuntu** – die meistgenutzte Desktop-Distribution; einsteigerfreundlich, große Community
+- **Linux Mint** – basiert auf Ubuntu; besonders Windows-Umsteigern empfohlen
+- **Raspberry Pi OS** – offizielles System für den Raspberry Pi
+
+**Red-Hat-Familie:**
+- **Fedora** – community-getrieben; zeigt, wohin Red Hat technisch entwickeln will
+- **RHEL** (Red Hat Enterprise Linux) – kostenpflichtiger Enterprise-Support
+- **AlmaLinux / Rocky Linux** – freie, binärkompatible RHEL-Klone; lösten CentOS ab
+
+**Unabhängige:**
+- **Arch Linux** – Rolling Release; maximale Aktualität; für erfahrene Nutzer
+- **openSUSE** – stark in Unternehmensumgebungen; bietet stabiles Leap und rolliges Tumbleweed
+- **Alpine Linux** – extrem schlank; Standard-Basis für Docker-Container
+
+## Unterschiede zwischen Distributionen
+
+### Ausrichtung
+
+| Typ | Typische Distros | Merkmale |
+|---|---|---|
+| **Desktop / Client** | Ubuntu, Mint, Fedora | Grafische Oberfläche, einfache Installation, Consumer-Software |
+| **Server** | Debian, Ubuntu Server, Rocky Linux | Kein Desktop, Stabilität, langer Support-Zeitraum |
+| **Enterprise** | RHEL, SUSE Linux Enterprise | Zertifizierungen, kommerzieller Support, strenger Zyklus |
+| **Minimal / Embedded** | Alpine, Void | Kein Overhead, Container, Router, IoT |
+
+### Software-Zusammenstellung: Stable vs. Rolling
+
+Distributionen unterscheiden sich stark darin, wie *konservativ* oder *aktuell* sie Software ausliefern:
+
+- **Stable / LTS** (z. B. Debian stable, Ubuntu LTS): Software ist älter, aber gut getestet – ideal für Server
+- **Rolling Release** (z. B. Arch, openSUSE Tumbleweed): immer aktuellste Versionen – ideal für den eigenen Desktop
+
+<Aside type="caution">
+Rolling-Release-Distributionen auf **Produktiv-Servern** einzusetzen ist riskant: Ein Paket-Update kann jederzeit Breaking Changes mitbringen, ohne dass ein explizites Upgrade-Fenster geplant wird.
+</Aside>
+
+### Das Paketsystem
+
+Das Paketsystem ist eines der deutlichsten Unterscheidungsmerkmale. Pakete enthalten vorkompilierte Software und Metadaten über Abhängigkeiten – der Paketmanager löst diese automatisch auf.
+
+<Tabs>
+  <TabItem label="Debian / Ubuntu (.deb)">
+    ```bash
+    # Paketlisten aktualisieren
+    apt update
+
+    # Paket installieren
+    apt install nginx
+
+    # Paket entfernen
+    apt remove nginx
+
+    # System aktualisieren
+    apt upgrade
+    ```
+  </TabItem>
+  <TabItem label="Red Hat / Fedora (.rpm)">
+    ```bash
+    # Paket installieren
+    dnf install nginx
+
+    # Paket entfernen
+    dnf remove nginx
+
+    # System aktualisieren
+    dnf upgrade
+    ```
+  </TabItem>
+  <TabItem label="SUSE (.rpm)">
+    ```bash
+    # Paketlisten aktualisieren
+    zypper refresh
+
+    # Paket installieren
+    zypper install nginx
+
+    # System aktualisieren
+    zypper update
+    ```
+  </TabItem>
+  <TabItem label="Arch (pacman)">
+    ```bash
+    # System aktualisieren und Paket installieren
+    pacman -Syu nginx
+
+    # Paket entfernen (inkl. nicht mehr benötigter Abhängigkeiten)
+    pacman -Rns nginx
+    ```
+  </TabItem>
+</Tabs>
+
+### Init-System
+
+Fast alle modernen Distributionen nutzen **systemd** als Init-System – den ersten Prozess, der beim Booten startet (PID 1) und alle Dienste verwaltet:
+
+```bash
+# Dienst starten
+systemctl start nginx
+
+# Dienst beim Boot automatisch starten
+systemctl enable nginx
+
+# Status eines Dienstes prüfen
+systemctl status nginx
+```
+
+<Aside type="note">
+Ausnahmen wie Alpine Linux (OpenRC) oder Devuan (SysVinit) sind bewusste Gegenentwürfe zu systemd. Für den Einstieg ist das kaum relevant – wer jedoch in größere Unternehmensumgebungen einsteigt, begegnet fast ausschließlich systemd.
+</Aside>
+
+## Welche Distribution wählen?
+
+| Ziel | Empfehlung |
+|---|---|
+| Einsteiger / Desktop | Ubuntu oder Linux Mint |
+| Heimserver / selbst hosten | Debian oder Ubuntu Server |
+| Unternehmensumgebung | RHEL, Rocky Linux oder SUSE Linux Enterprise |
+| Lernen / vollständige Kontrolle | Arch Linux oder Debian (minimal install) |
+| Container-Images | Alpine Linux |

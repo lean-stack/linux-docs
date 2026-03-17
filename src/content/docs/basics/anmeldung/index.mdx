@@ -1,0 +1,59 @@
+---
+title: Anmeldung
+sidebar:
+  order: 1
+  label: Einführung
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Wie in jedem Betriebssystem muss ein Benutzer sich zunächst anmelden, bevor er das System nutzen kann. Dieser als *Login* bezeichnete Vorgang kann über verschiedene Wege erfolgen.
+
+Da Linux ein **Multi-User-System** ist, können mehrere Benutzer gleichzeitig – auch über verschiedene Wege – angemeldet sein und unabhängig voneinander arbeiten.
+
+## Anmeldemöglichkeiten
+
+- [Lokale Anmeldung](lokal) – direkt am Gerät, über ein virtuelles Terminal oder einen grafischen Login-Screen
+- [Entfernte Anmeldung via SSH](remote) – über das Netzwerk, ohne physischen Zugang zum Rechner
+
+Nach der Anmeldung über Terminal oder SSH landet der Benutzer in der **Shell** – einem Programm, das auf Eingaben wartet und Befehle ausführt.
+
+## Die Shell
+
+Die Standard-Shell unter Linux ist die `bash`. Nach der Anmeldung begrüßt sie den Benutzer mit dem sogenannten *Prompt* – einer Eingabeaufforderung, die auf Befehle wartet:
+
+```
+alice@server:~$
+```
+
+Die einzelnen Bestandteile des Prompts:
+
+| Teil | Bedeutung |
+|---|---|
+| `alice` | Angemeldeter Benutzer |
+| `server` | Hostname des Systems |
+| `~` | Aktuelles Verzeichnis (`~` = Home-Verzeichnis) |
+| `$` | Normaler Benutzer (bei `root`: `#`) |
+
+<Aside type="note">
+Der Name *bash* ist ein Akronym: **B**ourne-**A**gain-**Sh**ell. Er bezieht sich auf die ursprüngliche Unix-Shell `sh`, die Stephen Bourne in den 1970er Jahren bei den Bell Labs (AT&T) entwickelt hat. Die bash ist eine freie Weiterentwicklung davon.
+</Aside>
+
+<Aside type="tip">
+Zu 100% wird ein Linux-System über Kommandos in einer Shell administriert. Auf Desktop-Systemen lassen sich manche Aufgaben auch grafisch erledigen – das ist jedoch kein Thema für die Server-Administration. Ein Linux-Server startet daher standardmäßig keine grafische Oberfläche.
+</Aside>
+
+## Terminal-Emulatoren (Desktop)
+
+Wer an einem System mit grafischer Oberfläche arbeitet, öffnet zum Eingeben von Shell-Befehlen einen **Terminal-Emulator** – ein Fenster, das eine Shell-Sitzung enthält.
+
+Je nach Desktop-Umgebung heißt dieses Programm anders:
+
+| Desktop | Terminal-Emulator |
+|---|---|
+| GNOME | GNOME Terminal, Console |
+| KDE Plasma | Konsole |
+| Xfce | Xfce Terminal |
+| universell | `xterm`, `alacritty`, `kitty` |
+
+Der Terminal-Emulator startet intern einen *Pseudo-Terminal* (PTY) und darin die Standard-Shell des Benutzers – funktional identisch mit einer echten Konsolen-Anmeldung.

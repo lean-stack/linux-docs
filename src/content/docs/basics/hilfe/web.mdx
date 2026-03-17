@@ -1,0 +1,85 @@
+---
+title: Hilfe im Web & mit KI
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Wenn `man` und `--help` nicht weiterhelfen – weil das Problem zu spezifisch, die Fehlermeldung kryptisch oder das Konzept zu komplex ist – kommen externe Quellen ins Spiel.
+
+## The Linux Documentation Project (TLDP)
+
+[tldp.org](https://tldp.org) ist eines der ältesten Linux-Dokumentationsprojekte und enthält:
+
+- **HOWTOs** – praxisorientierte Anleitungen zu konkreten Aufgaben (Netzwerk einrichten, RAID konfigurieren, Drucker einbinden, …)
+- **Guides** – umfangreichere Werke zu ganzen Themenbereichen (Bash-Scripting, Netzwerk-Administration, …)
+- **Man Page HOWTO** – Anleitung zum Schreiben eigener Manpages
+
+Besonders bekannt und empfehlenswert ist der **Advanced Bash-Scripting Guide** – auch wenn er in Teilen veraltet ist, bleibt er eine der vollständigsten Quellen zum Thema Bash.
+
+<Aside type="note">
+Viele TLDP-Dokumente stammen aus den 2000er bis frühen 2010er Jahren und wurden seitdem nicht mehr aktualisiert. Grundlegende Konzepte sind zeitlos; distributionsspezifische Details oder moderne Tools sollte man lieber in aktuelleren Quellen nachschlagen.
+</Aside>
+
+## Suchmaschinen
+
+Suchmaschinen sind oft der schnellste Weg bei konkreten Fehlermeldungen oder spezifischen Problemen. Einige Tipps für effektive Suchen:
+
+**Fehlermeldung direkt in Anführungszeichen:**
+```
+"Permission denied (publickey)" ssh
+```
+
+**Distribution mit angeben:**
+```
+ubuntu 24.04 nginx startet nicht nach update
+```
+
+**Nach Dateiformat oder Konfiguration suchen:**
+```
+/etc/fstab aufbau erklärung
+```
+
+### Empfehlenswerte Anlaufstellen in den Suchergebnissen
+
+| Seite | Stärke |
+|---|---|
+| **[Arch Wiki](https://wiki.archlinux.org)** | Ausführlichste Linux-Wiki; gilt distributionsübergreifend |
+| **[Stack Overflow](https://stackoverflow.com)** / **[Unix & Linux SE](https://unix.stackexchange.com)** | Konkrete Fragen und Antworten mit Community-Bewertung |
+| **[askubuntu.com](https://askubuntu.com)** | Ubuntu-spezifisch, aber oft übertragbar |
+| **[Reddit r/linux](https://reddit.com/r/linux)** | Community-Diskussionen, Erfahrungsberichte |
+
+<Aside type="tip">
+Das **Arch Wiki** ist auch für Nicht-Arch-Nutzer eine hervorragende Ressource. Die Artikel erklären Konzepte oft tiefer als distributionsspezifische Dokumentationen – und die beschriebenen Konfigurationen funktionieren auf den meisten Systemen.
+</Aside>
+
+## KI-Tools
+
+Moderne KI-Assistenten (ChatGPT, Claude, Gemini u. a.) sind mittlerweile hilfreiche Werkzeuge beim Lernen und Arbeiten mit Linux. Sie eignen sich besonders gut für:
+
+- **Erklärungen** – "Was macht dieser Befehl genau?" / "Erkläre mir den Unterschied zwischen Hard-Link und Symlink"
+- **Einstieg in neue Themen** – einen groben Überblick bekommen, bevor man die Manpage liest
+- **Skizzen und Beispiele** – "Zeig mir ein Beispiel für ein Bash-Skript, das Dateien nach Datum sortiert"
+- **Fehlermeldungen einordnen** – Kontext und mögliche Ursachen erklären lassen
+
+<Aside type="caution">
+KI-Tools können **halluzinieren** – also mit großer Selbstsicherheit falsche oder veraltete Informationen liefern. Das gilt besonders für:
+
+- Konkrete Versionsnummern und Paketbezeichnungen
+- Konfigurationsdatei-Syntax die sich über Versionen geändert hat
+- Selten genutzte Optionen von Befehlen
+
+Die goldene Regel: KI-Ausgaben die Befehle oder Konfigurationen enthalten **immer mit `man` oder `--help` gegenchecken**, bevor man sie auf einem Produktivsystem ausführt.
+</Aside>
+
+## Welche Quelle wann?
+
+| Situation | Empfehlung |
+|---|---|
+| Option eines bekannten Befehls nachschlagen | `--help` |
+| Vollständige Referenz, alle Details | `man` |
+| Konzept verstehen, Einstieg | KI oder TLDP |
+| Konkrete Fehlermeldung | Suchmaschine → Stack Exchange / Arch Wiki |
+| Schritt-für-Schritt-Anleitung für eine Aufgabe | TLDP HOWTO oder Arch Wiki |
+| Komplexes Skript entwerfen | KI als Skizze, dann selbst verstehen und anpassen |

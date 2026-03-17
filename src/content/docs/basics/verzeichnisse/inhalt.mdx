@@ -1,0 +1,66 @@
+---
+title: Verzeichnis-Inhalt
+sidebar:
+  order: 5
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Mit `ls` (*List*) wird der Inhalt eines Verzeichnisses angezeigt.
+
+## Grundlegende Verwendung
+
+```bash
+ls              # Inhalt des aktuellen Arbeitsverzeichnisses
+ls pfad         # Inhalt eines anderen Verzeichnisses
+ls /etc         # absoluter Pfad
+ls ~/dokumente  # relativer Pfad mit ~
+```
+
+## Wichtige Optionen
+
+| Option | Bedeutung |
+|---|---|
+| `-l` | Lange Ausgabe: Typ, Rechte, Eigentümer, Größe, Datum |
+| `-a` | Alle Einträge anzeigen, auch versteckte (Dateien mit führendem `.`) |
+| `-h` | Dateigrößen menschenlesbar (`K`, `M`, `G` statt Bytes) |
+| `-t` | Nach Änderungsdatum sortieren (neueste zuerst) |
+| `-r` | Reihenfolge umkehren |
+
+<Aside type="tip">
+Optionen lassen sich kombinieren – statt `ls -l -a -h` schreibt man einfacher `ls -lah`.
+</Aside>
+
+## Beispielausgabe `ls -lh`
+
+```
+drwxr-xr-x  3 alice alice 4,0K Mär 15 10:22 dokumente
+drwxr-xr-x  2 alice alice 4,0K Mär 10 08:14 bilder
+-rw-r--r--  1 alice alice  42K Mär 16 14:05 notizen.txt
+-rw-------  1 alice alice 1,2M Mär  1 09:30 archiv.tar.gz
+```
+
+Die Spalten von links nach rechts:
+
+| Spalte | Beispiel | Bedeutung |
+|---|---|---|
+| Typ + Rechte | `drwxr-xr-x` | `d` = Verzeichnis, `-` = Datei; dann Lese-/Schreib-/Ausführrechte |
+| Links | `3` | Anzahl Hardlinks |
+| Eigentümer | `alice` | Besitzender Benutzer |
+| Gruppe | `alice` | Besitzende Gruppe |
+| Größe | `42K` | Dateigröße (mit `-h`) |
+| Datum | `Mär 16 14:05` | Zeitpunkt der letzten Änderung |
+| Name | `notizen.txt` | Datei- oder Verzeichnisname |
+
+<Aside type="note">
+Versteckte Dateien und Ordner beginnen unter Linux mit einem Punkt, z. B. `.bashrc` oder `.ssh/`. Sie werden von `ls` standardmäßig nicht angezeigt – erst mit `-a` werden sie sichtbar.
+</Aside>
+
+## Weitere Optionen erkunden
+
+Alle verfügbaren Optionen lassen sich über die eingebaute Hilfe anzeigen:
+
+```bash
+ls --help
+man ls
+```

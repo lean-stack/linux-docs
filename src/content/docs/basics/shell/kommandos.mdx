@@ -1,0 +1,128 @@
+---
+title: Kommandos
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Anatomie eines Befehls
+
+Ein Shell-Befehl folgt immer demselben Grundmuster:
+
+```
+befehl  [optionen]  [argumente]
+```
+
+```bash
+ls -lh /etc
+#  ^    ^^  ^^^^
+#  |    ||  Argument: Pfad, auf den ls angewendet wird
+#  |    Optionen: -l (lange Ausgabe) und -h (menschenlesbare Größen)
+#  Befehl
+```
+
+**Optionen** verändern das Verhalten eines Befehls. Sie werden üblicherweise in zwei Formen angegeben:
+
+| Form | Beispiel | Bedeutung |
+|---|---|---|
+| Kurzform | `-l` | Ein Bindestrich, ein Buchstabe |
+| Langform | `--all` | Zwei Bindestriche, ein Wort |
+
+Kurzoptionen lassen sich kombinieren: `-l -a -h` ist identisch mit `-lah`.
+
+```bash
+ls -lah /etc
+ls --all /etc       # identisch mit ls -a /etc
+rm -rf ordner/      # kombiniert: -r (rekursiv) + -f (force)
+```
+
+**Argumente** sind die Eingaben, auf die der Befehl wirkt – typischerweise Dateipfade, Hostnamen oder sonstige Werte.
+
+<Aside type="note">
+Das `--` signalisiert manchen Befehlen das Ende der Optionen. Was danach kommt, wird als Argument behandelt – auch wenn es mit `-` beginnt. Das ist wichtig beim Umgang mit Dateien, deren Name mit einem Bindestrich beginnt:
+
+```bash
+rm -- -komische-datei.txt
+```
+</Aside>
+
+## Arten von Kommandos
+
+Die bash kennt fünf Arten von Kommandos, die in dieser Reihenfolge gesucht werden:
+
+1. **Alias** – ein selbst definierter Kurzname für einen längeren Befehl
+2. **Shell-Funktion** – eine in der Shell-Konfiguration definierte Funktion
+3. **Builtin** – in die Shell eingebaut; kein externes Programm (z. B. `cd`, `echo`, `exit`)
+4. **Externes Programm** – eine ausführbare Datei, die über `$PATH` gefunden wird
+5. **Absoluter Pfad** – direkter Aufruf über den vollständigen Pfad
+
+```bash
+type cd       # cd is a shell builtin
+type ls       # ls is /usr/bin/ls
+type ll       # ll is aliased to `ls -alF`
+type grep     # grep is /usr/bin/grep
+```
+
+### Die `$PATH`-Variable
+
+Externe Programme werden nicht überall gesucht – sondern nur in den Verzeichnissen, die in der Umgebungsvariablen `$PATH` aufgelistet sind:
+
+```bash
+echo $PATH
+# /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/alice/.local/bin
+```
+
+Die Einträge sind durch `:` getrennt. Die Shell durchsucht sie von links nach rechts und nimmt das erste gefundene Programm.
+
+```bash
+which ls      # zeigt den vollständigen Pfad des gefundenen Programms
+# /usr/bin/ls
+
+which python3
+# /usr/bin/python3
+```
+
+<Aside type="tip">
+Eigene Skripte oder Programme, die ohne Pfad aufrufbar sein sollen, kommen in `~/.local/bin/` – dieses Verzeichnis ist auf modernen Systemen bereits in `$PATH` enthalten.
+</Aside>
+
+## Tab-Vervollständigung
+
+Die `Tab`-Taste ist eines der wichtigsten Produktivitätswerkzeuge der Shell. Sie vervollständigt Befehle, Dateipfade und – bei vielen Programmen – sogar Optionen:
+
+```bash
+ls /etc/ssh/ssh<Tab>
+# → ls /etc/ssh/ssh_config   (eindeutig: wird direkt vervollständigt)
+
+ls /etc/s<Tab><Tab>
+# → ssh/  ssl/  sysctl.conf  systemd/  ...  (mehrdeutig: alle Möglichkeiten werden angezeigt)
+```
+
+Einmaliges `Tab`: vervollständigt, wenn eindeutig. Zweimaliges `Tab`: zeigt alle Möglichkeiten.
+
+## Befehlshistorie
+
+Die Shell speichert ausgeführte Befehle in einer Historiedatei (`~/.bash_history`). Der schnellste Zugriff:
+
+| Taste / Befehl | Funktion |
+|---|---|
+| `↑` / `↓` | Vorherigen / nächsten Befehl |
+| `Strg`+`R` | Rückwärts-Suche in der Historie |
+| `history` | Alle gespeicherten Befehle anzeigen |
+| `!42` | Befehl Nummer 42 aus der Historie ausführen |
+| `!!` | Letzten Befehl wiederholen |
+| `!ls` | Letzten Befehl, der mit `ls` begann, wiederholen |
+
+```bash
+Strg+R
+(reverse-i-search)`ssh': ssh alice@server.beispiel.de
+```
+
+<Aside type="tip">
+`Strg`+`R` ist im Alltag besonders wertvoll für lange Befehle, die man selten tippt aber immer wieder braucht – SSH-Verbindungen, `find`-Ausdrücke, Docker-Kommandos.
+</Aside>
+
+## Hilfe zu Befehlen
+
+Wie man zu einem Befehl Hilfe bekommt – über `--help`, `man` und weitere Quellen – ist im Abschnitt [Hilfe & Dokumentation](../hilfe) ausführlich beschrieben.

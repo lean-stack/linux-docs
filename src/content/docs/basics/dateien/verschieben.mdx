@@ -1,0 +1,79 @@
+---
+title: Verschieben & Umbenennen
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Mit `mv` (*Move*) werden Dateien und Verzeichnisse verschoben oder umbenannt. Unter Linux gibt es **keinen separaten Befehl zum Umbenennen** – beides ist dieselbe Operation.
+
+## Umbenennen
+
+```bash
+mv alter-name.txt neuer-name.txt
+mv projektordner/ archiv-2025/
+```
+
+## Verschieben
+
+```bash
+mv bericht.txt dokumente/           # in einen anderen Ordner verschieben
+mv bericht.txt dokumente/neu.txt    # verschieben und gleichzeitig umbenennen
+mv datei1.txt datei2.txt zielordner/ # mehrere Dateien in einen Ordner verschieben
+```
+
+## Der Inode – die Identität einer Datei
+
+Um zu verstehen, was `mv` intern tut, hilft ein Blick auf das Konzept des **Inodes**.
+
+Jede Datei in einem Linux-Dateisystem besteht aus zwei Teilen:
+
+1. **Inode** – ein Datensatz im Dateisystem, der die eigentlichen Metadaten und Daten-Blöcke der Datei beschreibt (Rechte, Eigentümer, Größe, Zeitstempel, Zeiger auf die Datenblöcke). Jeder Inode hat eine eindeutige Nummer.
+2. **Verzeichniseintrag** – eine Zeile im übergeordneten Verzeichnis, die einen Namen mit einer Inode-Nummer verknüpft.
+
+```
+Verzeichnis /home/alice/:
+  "bericht.txt"  →  Inode 48291
+  "notizen.txt"  →  Inode 48305
+
+Inode 48291:
+  Größe: 12.4 KB
+  Eigentümer: alice
+  Datenblöcke: [Block 8200, Block 8201, ...]
+```
+
+Die Inode-Nummer einer Datei lässt sich anzeigen:
+
+```bash
+ls -i bericht.txt
+# 48291 bericht.txt
+```
+
+### Was passiert beim `mv` auf derselben Partition?
+
+Beim Verschieben oder Umbenennen **innerhalb derselben Partition** wird der Inode nicht angefasst. Nur der Verzeichniseintrag ändert sich – der Name zeigt danach auf denselben Inode wie zuvor:
+
+```bash
+mv bericht.txt archiv/jahresbericht.txt
+ls -i archiv/jahresbericht.txt
+# 48291 archiv/jahresbericht.txt   ← identische Inode-Nummer!
+```
+
+Das ist der Grund, warum `mv` auf derselben Partition **blitzschnell** ist, egal wie groß die Datei ist: Es werden keine Daten bewegt, nur ein Verzeichniseintrag umgeschrieben.
+
+### Was passiert beim `mv` über Partitionsgrenzen hinweg?
+
+Soll eine Datei auf eine **andere Partition** verschoben werden (z. B. von `/home` auf einen eingehängten USB-Stick unter `/media/usb`), muss `mv` die Daten tatsächlich kopieren und die Originaldatei anschließend löschen. Der Inode auf dem Zieldateisystem ist ein neuer.
+
+<Aside type="note">
+`mv` macht das automatisch transparent – der Benutzer merkt keinen Unterschied. Bei sehr großen Dateien über Partitionsgrenzen kann der Vorgang aber entsprechend lange dauern.
+</Aside>
+
+## Nützliche Optionen
+
+| Option | Bedeutung |
+|---|---|
+| `-i` | Interaktiv – fragt nach, bevor eine Datei überschrieben wird |
+| `-u` | Nur verschieben, wenn Quelle neuer als Ziel |
+| `-v` | Verbose – zeigt jede verschobene Datei an |

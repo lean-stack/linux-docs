@@ -1,0 +1,69 @@
+---
+title: Dateien kopieren
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Mit `cp` (*Copy*) werden Dateien und Verzeichnisse kopiert. Beim Kopieren entsteht eine vollständig unabhängige Kopie – Änderungen an der Kopie haben keinen Einfluss auf das Original.
+
+## Einzelne Datei kopieren
+
+```bash
+cp quelle.txt ziel.txt          # Kopie mit neuem Namen im selben Verzeichnis
+cp quelle.txt ordner/           # Kopie in einen anderen Ordner, gleicher Name
+cp quelle.txt ordner/kopie.txt  # Kopie in anderen Ordner mit neuem Namen
+```
+
+## Mehrere Dateien kopieren
+
+Wenn mehrere Quelldateien angegeben werden, **muss** das Ziel ein Verzeichnis sein. Die Kopien erhalten den jeweiligen Originalnamen:
+
+```bash
+cp datei1.txt datei2.txt datei3.txt zielordner/
+```
+
+## Verzeichnisse kopieren: `-r`
+
+Soll ein ganzes Verzeichnis kopiert werden, ist die Option `-r` (*recursive*) erforderlich:
+
+```bash
+cp -r quellordner/ zielordner/
+```
+
+Das Verhalten hängt davon ab, ob `zielordner/` bereits existiert:
+
+| Ziel existiert? | Ergebnis |
+|---|---|
+| Nein | `zielordner/` wird angelegt und mit dem Inhalt von `quellordner/` gefüllt |
+| Ja | `quellordner/` wird als Unterordner in `zielordner/` kopiert |
+
+```bash
+# zielordner/ existiert noch nicht:
+cp -r projekte/ backup/
+# → backup/ enthält direkt den Inhalt von projekte/
+
+# zielordner/ existiert bereits:
+cp -r projekte/ backup/
+# → backup/projekte/ wird angelegt
+```
+
+<Aside type="caution">
+Das unterschiedliche Verhalten je nachdem ob der Zielordner existiert ist eine häufige Fehlerquelle. Im Zweifel mit `ls` prüfen, ob der Zielordner bereits vorhanden ist.
+</Aside>
+
+## Nützliche Optionen
+
+| Option | Bedeutung |
+|---|---|
+| `-r` | Rekursiv (für Verzeichnisse erforderlich) |
+| `-i` | Interaktiv – fragt nach, bevor eine Datei überschrieben wird |
+| `-u` | Nur kopieren, wenn Quelle neuer als Ziel (Update) |
+| `-v` | Verbose – zeigt jede kopierte Datei an |
+| `-p` | Rechte, Eigentümer und Zeitstempel beibehalten |
+| `-a` | Archiv-Modus: entspricht `-rp` plus Symlinks erhalten |
+
+```bash
+cp -av projekte/ backup/   # rekursiv, mit Zeitstempeln, mit Ausgabe
+```

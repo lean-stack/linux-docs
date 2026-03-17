@@ -1,0 +1,50 @@
+---
+title: Arbeitsverzeichnis
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Jeder laufende Prozess – und damit auch jede Shell-Sitzung – hat ein **aktuelles Arbeitsverzeichnis** (*Current Working Directory*, CWD). Relative Pfade werden immer von diesem Verzeichnis aus aufgelöst.
+
+## Aktuelles Verzeichnis anzeigen
+
+```bash
+pwd
+```
+
+`pwd` steht für **P**rint **W**orking **D**irectory und gibt den absoluten Pfad des aktuellen Verzeichnisses aus:
+
+```
+/home/alice/projekte
+```
+
+Alternativ ist das Arbeitsverzeichnis jederzeit in der Umgebungsvariablen `$PWD` gespeichert:
+
+```bash
+echo $PWD
+# /home/alice/projekte
+```
+
+<Aside type="tip">
+In der Regel ist `pwd` im interaktiven Betrieb kaum nötig – der Shell-Prompt zeigt das aktuelle Verzeichnis bereits an. `$PWD` ist vor allem in Shell-Skripten nützlich, wenn man den aktuellen Pfad weiterverarbeiten möchte.
+</Aside>
+
+## Heimverzeichnis
+
+Nach der Anmeldung startet die Shell im **Heimverzeichnis** des Benutzers. Es befindet sich standardmäßig unter `/home/benutzername`:
+
+```
+/home/alice    ← Heimverzeichnis von alice
+/home/bob      ← Heimverzeichnis von bob
+/root          ← Heimverzeichnis des Superusers root
+```
+
+Im Prompt wird das Heimverzeichnis als `~` abgekürzt:
+
+```
+alice@server:~$          # aktuell im Heimverzeichnis
+alice@server:~/projekte$ # aktuell in ~/projekte
+alice@server:/etc$       # aktuell in /etc
+```

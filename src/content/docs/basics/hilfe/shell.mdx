@@ -1,0 +1,119 @@
+---
+title: Hilfe in der Shell
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## `--help`
+
+Der schnellste Weg zur Hilfe: Fast jedes Programm akzeptiert `--help` oder `-h` und gibt eine kompakte Übersicht der verfügbaren Optionen aus.
+
+```bash
+ls --help
+cp --help
+grep --help
+ssh --help
+```
+
+Die Ausgabe landet in der Regel direkt im Terminal und ist auf das Wesentliche beschränkt – ideal, wenn man eine bestimmte Option kurz nachschlagen will, ohne eine vollständige Manpage zu öffnen.
+
+<Aside type="note">
+Für Shell-**Builtins** (wie `cd`, `echo`, `type`) gibt es kein `--help`. Dort hilft stattdessen:
+
+```bash
+help cd
+help echo
+```
+
+`help` ohne Argument listet alle verfügbaren Builtins auf.
+</Aside>
+
+## `man` – Manual Pages
+
+Die **Manpages** sind die vollständige Referenzdokumentation des Systems. Sie werden mit `man` aufgerufen und im Pager `less` angezeigt:
+
+```bash
+man ls
+man ssh
+man 5 /etc/passwd   # Sektionsnummer explizit angeben
+```
+
+### Navigation
+
+| Taste | Aktion |
+|---|---|
+| `↓` / `↑` oder `j` / `k` | Zeilenweise scrollen |
+| `Space` / `b` | Seite vor / zurück |
+| `g` / `G` | Zum Anfang / Ende springen |
+| `/suchbegriff` | Vorwärts suchen |
+| `?suchbegriff` | Rückwärts suchen |
+| `n` / `N` | Nächsten / vorherigen Treffer |
+| `q` | Beenden |
+
+### Sektionen
+
+Manpages sind in Sektionen aufgeteilt. Manche Namen existieren in mehreren:
+
+| Sektion | Inhalt |
+|---|---|
+| 1 | Benutzerbefehle (`ls`, `cp`, `grep`, …) |
+| 2 | Systemaufrufe (Kernel-API für Programmierer) |
+| 3 | Bibliotheksfunktionen (C-Standardbibliothek) |
+| 4 | Gerätedateien (`/dev/…`) |
+| 5 | Dateiformate und Konfigurationsdateien |
+| 6 | Spiele |
+| 7 | Verschiedenes (Konzepte, Protokolle, Zeichensätze) |
+| 8 | Systemverwaltungsbefehle (`systemctl`, `mount`, …) |
+
+```bash
+man passwd      # zeigt Sektion 1: den passwd-Befehl
+man 5 passwd    # zeigt Sektion 5: das Dateiformat von /etc/passwd
+```
+
+### Suchen über alle Manpages
+
+```bash
+man -k stichwort    # sucht in Kurzbeschreibungen aller Manpages
+apropos stichwort   # identisch mit man -k
+
+man -k copy
+# cp (1)           - copy files and directories
+# scp (1)          - OpenSSH secure file copy
+# rsync (1)        - a fast, versatile, remote (and local) file-copying tool
+```
+
+```bash
+whatis ls           # zeigt nur die Kurzbeschreibung einer Manpage
+# ls (1)            - list directory contents
+```
+
+<Aside type="tip">
+`man -k` ist nützlich, wenn man den genauen Befehlsnamen nicht kennt – einfach einen Begriff eingeben und schauen, welche Manpages dazu existieren.
+</Aside>
+
+## `info` – GNU Info Pages
+
+Das GNU-Projekt hat ein eigenes Dokumentationssystem entwickelt: **Info Pages**. Sie sind für viele GNU-Werkzeuge (gcc, bash, coreutils) ausführlicher als die Manpages und ermöglichen Navigation über Hyperlinks.
+
+```bash
+info ls
+info bash
+info coreutils
+```
+
+Navigation in `info`:
+
+| Taste | Aktion |
+|---|---|
+| `↓` / `↑` | Scrollen |
+| `Tab` | Zum nächsten Link springen |
+| `Enter` | Link folgen |
+| `l` | Zurück (wie Browser-Zurück) |
+| `n` / `p` | Nächstes / vorheriges Kapitel |
+| `q` | Beenden |
+
+<Aside type="note">
+Info Pages sind in der täglichen Arbeit selten nötig. Für die meisten Aufgaben reichen `--help` und `man`. Wer tief in ein GNU-Werkzeug einsteigt (z. B. bash-Scripting), findet dort aber oft deutlich mehr Details als in der Manpage.
+</Aside>

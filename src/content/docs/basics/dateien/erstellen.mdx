@@ -1,0 +1,73 @@
+---
+title: Dateien erstellen
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Es gibt mehrere Wege, eine neue Datei anzulegen – je nachdem, ob sie leer sein soll oder direkt Inhalt erhalten soll.
+
+## Leere Datei: `touch`
+
+`touch` legt eine leere Datei an. Existiert die Datei bereits, wird nur ihr Zeitstempel aktualisiert – der Inhalt bleibt unberührt.
+
+```bash
+touch datei.txt
+touch datei1.txt datei2.txt datei3.txt  # mehrere auf einmal
+```
+
+<Aside type="note">
+Der eigentliche Zweck von `touch` ist das Aktualisieren von Zeitstempeln. Das Anlegen leerer Dateien ist ein nützlicher Nebeneffekt, der in der Praxis häufig genutzt wird – etwa um Platzhalter-Dateien oder Lock-Files zu erstellen.
+</Aside>
+
+## Datei mit Inhalt: Umleitungsoperator `>`
+
+Mit `>` wird die Ausgabe eines Befehls in eine Datei umgeleitet. Existiert die Datei nicht, wird sie angelegt. Existiert sie, wird ihr Inhalt **überschrieben**.
+
+```bash
+echo "Hallo Welt" > begruessung.txt
+echo "Zeile 1"   > datei.txt
+echo "Zeile 2"  >> datei.txt   # >> hängt an statt zu überschreiben
+```
+
+Eine leere Datei lässt sich auch rein per Umleitung erzeugen – ohne jeden Befehl davor:
+
+```bash
+> leere-datei.txt
+```
+
+## Datei mit mehrzeiligem Inhalt: `cat`
+
+`cat` im interaktiven Modus liest von der Tastatur und schreibt alles in eine Datei. Abgeschlossen wird die Eingabe mit `Strg`+`D` (End of File):
+
+```bash
+cat > einkaufsliste.txt
+Äpfel
+Brot
+Milch
+^D
+```
+
+In Shell-Skripten wird dafür ein **Heredoc** verwendet:
+
+```bash
+cat > konfiguration.txt <<EOF
+server=localhost
+port=8080
+debug=false
+EOF
+```
+
+## Verzeichnis anlegen: `mkdir`
+
+Verzeichnisse werden mit `mkdir` erstellt:
+
+```bash
+mkdir projekte
+mkdir -p projekte/2026/januar   # -p legt auch alle fehlenden Elternordner an
+```
+
+<Aside type="tip">
+`mkdir -p` ist besonders nützlich in Skripten: Der Befehl schlägt nicht fehl, wenn das Verzeichnis bereits existiert.
+</Aside>

@@ -1,0 +1,63 @@
+---
+title: Dateien löschen
+sidebar:
+  order: 5
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Mit `rm` (*Remove*) werden Dateien und Verzeichnisse gelöscht.
+
+<Aside type="caution">
+Linux kennt **keinen Papierkorb** auf der Kommandozeile. Was mit `rm` gelöscht wird, ist weg – eine Rückgängig-Funktion gibt es nicht. Im Zweifel zuerst mit `ls` prüfen, was gelöscht werden soll.
+</Aside>
+
+## Dateien löschen
+
+```bash
+rm datei.txt
+rm datei1.txt datei2.txt datei3.txt  # mehrere auf einmal
+```
+
+## Verzeichnisse löschen
+
+Ein leeres Verzeichnis lässt sich mit `rmdir` entfernen:
+
+```bash
+rmdir leerer-ordner/
+```
+
+Für nicht-leere Verzeichnisse ist `rm -r` (*recursive*) nötig:
+
+```bash
+rm -r ordner/       # Ordner und seinen gesamten Inhalt löschen
+```
+
+<Aside type="caution">
+`rm -r` löscht rekursiv **alles** im angegebenen Verzeichnis, ohne Rückfrage. Der oft gesehene Befehl `rm -rf /` würde das gesamte System löschen – neuere Linux-Versionen verweigern das explizit, aber das Risiko bei falsch gesetzten Pfaden bleibt real.
+</Aside>
+
+## Nützliche Optionen
+
+| Option | Bedeutung |
+|---|---|
+| `-r` | Rekursiv – für Verzeichnisse erforderlich |
+| `-i` | Interaktiv – fragt vor jedem Löschen nach |
+| `-I` | Fragt einmal nach, wenn mehr als 3 Dateien oder rekursiv gelöscht werden |
+| `-v` | Verbose – zeigt jede gelöschte Datei an |
+| `-f` | Force – keine Fehlermeldung bei nicht-existierenden Dateien, keine Rückfrage |
+
+```bash
+rm -ri ordner/     # rekursiv, aber mit Nachfrage bei jeder Datei
+rm -Ir ordner/     # rekursiv, einmalige Sammelwarnung – guter Kompromiss
+```
+
+<Aside type="tip">
+Für kritische Löschaktionen empfiehlt es sich, zuerst mit `ls` oder `find` zu prüfen, welche Dateien betroffen wären – und erst dann `rm` auszuführen.
+</Aside>
+
+## Was beim Löschen wirklich passiert
+
+`rm` entfernt den **Verzeichniseintrag** (den Namen), der auf einen Inode zeigt. Der Inode – und damit die eigentlichen Daten auf der Festplatte – wird erst freigegeben, wenn **kein Verzeichniseintrag mehr darauf zeigt** und keine geöffneten Datei-Handles mehr existieren.
+
+Das ist auch die Grundlage für Hard-Links: Solange noch ein weiterer Name auf denselben Inode zeigt, bleiben die Daten erhalten – mehr dazu im nächsten Artikel.

@@ -1,0 +1,55 @@
+---
+title: Lokale Anmeldung
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Die lokale Anmeldung findet direkt am Gerät statt – ohne Netzwerkverbindung. Man sitzt physisch vor dem Rechner oder an der Konsole einer virtuellen Maschine.
+
+## Virtuelle Konsolen (TTY)
+
+Ein Linux-System stellt standardmäßig **sechs virtuelle Konsolen** bereit, bezeichnet als `tty1` bis `tty6`. Jede dieser Konsolen läuft unabhängig und erlaubt eine eigene Anmeldung mit Benutzernamen und Passwort.
+
+Zwischen den Konsolen wechselt man mit:
+
+| Tastenkombination | Ziel |
+|---|---|
+| `Alt` + `F1` … `F6` | Wechsel zwischen TTY 1–6 |
+| `Strg` + `Alt` + `F2` … `F6` | Wechsel vom grafischen Desktop auf ein Text-TTY |
+
+Nach erfolgreicher Anmeldung erscheint der Shell-Prompt:
+
+```
+Ubuntu 24.04.1 LTS server tty1
+
+server login: alice
+Password:
+Last login: Mon Mar 16 09:12:44 UTC 2026
+alice@server:~$
+```
+
+<Aside type="note">
+Auf Systemen mit grafischer Oberfläche belegt der **Display-Manager** in der Regel `tty1`. Weitere grafische Sitzungen können je nach Distribution auf `tty2`, `tty7` oder höher landen. Beim Wechsel auf ein Text-Terminal muss deshalb zusätzlich `Strg` gedrückt werden – einfach mehrere Funktionstasten ausprobieren, bis ein Text-Login erscheint.
+</Aside>
+
+## Grafischer Login (Display-Manager)
+
+Startet das System mit einer grafischen Oberfläche, erscheint zunächst der **Display-Manager** – ein visueller Login-Bildschirm. Gängige Display-Manager:
+
+| Display-Manager | Typisch bei |
+|---|---|
+| **GDM** | GNOME (Ubuntu, Fedora) |
+| **SDDM** | KDE Plasma |
+| **LightDM** | Xfce, Linux Mint |
+
+Hier wählt man Benutzername, gibt das Passwort ein und kann je nach Konfiguration auch die gewünschte **Desktop-Umgebung** auswählen.
+
+<Aside type="caution">
+Dem Superuser **`root`** ist die grafische Anmeldung standardmäßig verwehrt. Das ist eine bewusste Sicherheitsmaßnahme – administrative Aufgaben werden stattdessen über `sudo` in einem Terminal erledigt.
+</Aside>
+
+<Aside type="tip">
+Auf Systemen, die ohne grafische Oberfläche starten, lässt sich der Desktop nach einer Konsolen-Anmeldung manuell starten – sofern er installiert ist. Das wird im Thema **System-Start und Dienste** behandelt.
+</Aside>

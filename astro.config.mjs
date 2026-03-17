@@ -6,19 +6,46 @@ import starlight from '@astrojs/starlight';
 export default defineConfig({
 	integrations: [
 		starlight({
-			title: 'My Docs',
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/withastro/starlight' }],
+			title: 'Linux Unterlagen',
+			defaultLocale: 'de',
+			locales: { root: { label: 'Deutsch', lang: 'de' } },
+			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/lean-stack/linux-docs' }],
 			sidebar: [
 				{
-					label: 'Guides',
+					label: 'Einführung',
 					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: 'Example Guide', slug: 'guides/example' },
+						{ label: 'Was ist Linux?', slug: 'intro/was-ist-linux' },
+						{ label: 'Distributionen', slug: 'intro/distributionen' },
 					],
 				},
 				{
-					label: 'Reference',
-					autogenerate: { directory: 'reference' },
+					label: 'Grundlagen',
+					items: [
+						{
+							label: 'Anmeldung',
+							autogenerate: { directory: 'basics/anmeldung' },
+						},
+						{
+							label: 'Einführung Shell',
+							autogenerate: { directory: 'basics/shell' },
+						},
+						{
+							label: 'Hilfe & Dokumentation',
+							autogenerate: { directory: 'basics/hilfe' },
+						},
+						{
+							label: 'Verzeichnisse',
+							autogenerate: { directory: 'basics/verzeichnisse' },
+						},
+						{
+							label: 'Dateien',
+							autogenerate: { directory: 'basics/dateien' },
+						},
+					],
+				},
+				{
+					label: 'Administration',
+					autogenerate: { directory: 'administration' },
 				},
 			],
 		}),
