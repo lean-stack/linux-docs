@@ -1,0 +1,137 @@
+---
+title: find – nach Dateien suchen
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`find` durchsucht den Verzeichnisbaum nach Dateien und Verzeichnissen, die bestimmte Kriterien erfüllen. Im Gegensatz zu Globs durchsucht `find` auch Unterverzeichnisse und kann nach Metadaten wie Größe, Datum oder Typ filtern.
+
+## Grundlegende Syntax
+
+```bash
+find startpfad [kriterien] [aktionen]
+```
+
+```bash
+find /home -name "*.txt"          # alle .txt-Dateien unter /home
+find . -name "config.yml"         # im aktuellen Verzeichnis (und darunter)
+find / -name "sshd_config"        # auf dem gesamten System
+```
+
+<Aside type="note">
+`find` ohne Kriterien listet den gesamten Verzeichnisbaum ab dem Startpfad – nützlich zum Erkunden, aber bei `/` sehr umfangreich.
+</Aside>
+
+## Suche nach Name und Typ
+
+```bash
+find . -name "*.log"              # Groß-/Kleinschreibung beachten
+find . -iname "*.jpg"             # -iname: Groß-/Kleinschreibung ignorieren
+
+find . -type f                    # nur reguläre Dateien
+find . -type d                    # nur Verzeichnisse
+find . -type l                    # nur symbolische Links
+
+find . -type f -name "*.sh"       # nur Dateien mit .sh-Endung
+find . -type d -name "cache"      # nur Verzeichnisse namens "cache"
+```
+
+## Suche nach Größe
+
+```bash
+find . -size +100M                # größer als 100 MB
+find . -size -10k                 # kleiner als 10 KB
+find . -size +1M -size -500M      # zwischen 1 MB und 500 MB
+find /var/log -size +50M -type f  # große Log-Dateien
+```
+
+Einheiten: `c` (Bytes), `k` (KB), `M` (MB), `G` (GB)
+
+## Suche nach Datum
+
+```bash
+find . -mtime -7                  # in den letzten 7 Tagen geändert
+find . -mtime +30                 # vor mehr als 30 Tagen geändert
+find . -mtime 0                   # heute geändert
+
+find . -newer referenz.txt        # neuer als referenz.txt
+find /tmp -atime +3               # seit mehr als 3 Tagen nicht zugegriffen
+```
+
+`-mtime` = Änderungsdatum, `-atime` = letzter Zugriff, `-ctime` = Inode-Änderung
+
+## Suchtiefe begrenzen
+
+```bash
+find . -maxdepth 1 -name "*.txt"  # nur im aktuellen Verzeichnis, nicht tiefer
+find . -maxdepth 2 -type d        # Verzeichnisse bis Tiefe 2
+```
+
+## Aktionen auf Treffer anwenden: `-exec`
+
+`find` kann gefundene Dateien direkt weiterverarbeiten. `{}` steht dabei für den jeweiligen Dateinamen, `\;` beendet den Befehl:
+
+```bash
+find . -name "*.bak" -exec rm {} \;          # alle .bak-Dateien löschen
+find . -name "*.sh" -exec chmod +x {} \;     # alle Skripte ausführbar machen
+find . -type f -exec ls -lh {} \;            # Dateigröße jeder gefundenen Datei
+```
+
+Mit `+` statt `\;` übergibt `find` alle Treffer auf einmal – effizienter bei vielen Dateien:
+
+```bash
+find . -name "*.log" -exec gzip {} +         # alle Logs auf einmal komprimieren
+```
+
+<Aside type="tip">
+Vor dem Löschen mit `-exec rm` lieber zuerst mit `-exec ls {} \;` oder einfach ohne Aktion prüfen, was `find` findet:
+
+```bash
+find . -name "*.bak"              # erst anschauen
+find . -name "*.bak" -exec rm {} \;   # dann löschen
+```
+</Aside>
+
+## stderr und Berechtigungsfehler
+
+Beim Durchsuchen von Systemverzeichnissen tauchen häufig Fehlermeldungen auf, weil `find` auf Verzeichnisse ohne Leseberechtigung trifft:
+
+```bash
+find / -name "sshd_config"
+# find: '/proc/tty/driver': Permission denied
+# find: '/root': Permission denied
+# /etc/ssh/sshd_config
+# find: '/run/sudo': Permission denied
+```
+
+Die Fehlermeldungen gehen über **stderr**, das eigentliche Ergebnis über **stdout**. Mit `2>/dev/null` werden nur die Fehlermeldungen unterdrückt – das Ergebnis bleibt:
+
+```bash
+find / -name "sshd_config" 2>/dev/null
+# /etc/ssh/sshd_config
+```
+
+<Aside type="note">
+Das ist der Praxisfall, für den der stderr-Kanal eingeführt wurde. `2>/dev/null` ist bei `find`-Aufrufen auf dem gesamten System fast immer sinnvoll.
+</Aside>
+
+## Kombinierte Beispiele
+
+```bash
+# Alle Dateien größer 100MB finden und Größe anzeigen
+find /home -type f -size +100M -exec ls -lh {} \;
+
+# Alle leeren Verzeichnisse finden
+find . -type d -empty
+
+# Alte temporäre Dateien aufspüren
+find /tmp -type f -mtime +7
+
+# Log-Dateien der letzten 24 Stunden
+find /var/log -name "*.log" -mtime -1
+
+# Alle Konfig-Dateien eines Benutzers
+find /home/alice -name ".*" -type f 2>/dev/null
+```

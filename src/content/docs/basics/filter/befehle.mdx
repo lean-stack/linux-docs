@@ -1,0 +1,180 @@
+---
+title: Filter-Befehle
+sidebar:
+  order: 2
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Anzeigen & Zählen
+
+### `cat` – Inhalt ausgeben
+
+`cat` gibt den Inhalt einer oder mehrerer Dateien nach stdout aus. Ohne Argument liest es von stdin:
+
+```bash
+cat datei.txt                    # Datei ausgeben
+cat datei1.txt datei2.txt        # mehrere Dateien hintereinander
+cat datei1.txt datei2.txt > zusammen.txt  # zusammenführen
+```
+
+Als Filter in einer Pipeline:
+
+```bash
+cat /etc/passwd | grep root
+```
+
+<Aside type="tip">
+Wenn nur eine Datei verarbeitet wird, ist `cat file | befehl` oft unnötig – `befehl file` funktioniert genauso. Der Einsatz von `cat` ergibt Sinn, wenn mehrere Dateien kombiniert werden oder die Pipeline-Logik es erfordert.
+</Aside>
+
+### `head` und `tail` – Anfang und Ende
+
+```bash
+head datei.txt          # erste 10 Zeilen (Standard)
+head -n 20 datei.txt    # erste 20 Zeilen
+head -n -5 datei.txt    # alles außer den letzten 5 Zeilen
+
+tail datei.txt          # letzte 10 Zeilen (Standard)
+tail -n 20 datei.txt    # letzte 20 Zeilen
+tail -n +5 datei.txt    # ab Zeile 5 bis zum Ende
+```
+
+`tail -f` folgt einer wachsenden Datei in Echtzeit – unverzichtbar für Log-Monitoring:
+
+```bash
+tail -f /var/log/syslog
+tail -f /var/log/nginx/access.log
+```
+
+<Aside type="tip">
+`tail -f` wartet auf neue Zeilen und gibt sie sofort aus. Beenden mit `Strg`+`C`. Ideal um einem laufenden Dienst beim Schreiben von Logs zuzusehen.
+</Aside>
+
+### `wc` – zählen
+
+`wc` (*Word Count*) zählt Zeilen, Wörter und Zeichen:
+
+```bash
+wc datei.txt
+#  42  318 2104 datei.txt
+#  ^   ^   ^
+#  |   |   Bytes
+#  |   Wörter
+#  Zeilen
+```
+
+Einzelne Werte:
+
+```bash
+wc -l datei.txt     # nur Zeilen
+wc -w datei.txt     # nur Wörter
+wc -c datei.txt     # nur Bytes
+
+ls /etc | wc -l     # Anzahl Einträge in /etc
+```
+
+### `less` – seitenweiser Pager
+
+`less` zeigt langen Output seitenweise an – nützlich wenn eine Ausgabe nicht auf den Bildschirm passt:
+
+```bash
+less datei.txt
+ls -la /etc | less
+cat /var/log/syslog | less
+```
+
+Navigation wie in `man`: `Space`/`b`, `/suche`, `q` zum Beenden.
+
+---
+
+## Sortieren & Filtern
+
+### `sort` – sortieren
+
+```bash
+sort datei.txt              # alphabetisch aufsteigend
+sort -r datei.txt           # absteigend
+sort -n zahlen.txt          # numerisch (nicht lexikografisch)
+sort -h größen.txt          # menschenlesbare Größen (1K, 2M, ...)
+sort -u datei.txt           # sortieren und Duplikate entfernen
+sort -t: -k3 -n /etc/passwd # Feld 3, :-getrennt, numerisch sortieren
+```
+
+```bash
+ls -1 /etc | sort -r | head -5   # letzte 5 Einträge alphabetisch
+```
+
+### `uniq` – Duplikate entfernen
+
+`uniq` entfernt **aufeinanderfolgende** identische Zeilen. Fast immer in Kombination mit `sort`:
+
+```bash
+sort datei.txt | uniq          # sortieren, dann Duplikate entfernen
+sort datei.txt | uniq -c       # mit Häufigkeit voranstellen
+sort datei.txt | uniq -d       # nur Duplikate anzeigen
+sort datei.txt | uniq -u       # nur Unikate anzeigen (kein Duplikat)
+```
+
+Typischer Einsatzfall – häufigste Einträge in einem Log:
+
+```bash
+cat access.log | cut -d' ' -f1 | sort | uniq -c | sort -rn | head -10
+# → Top-10 IP-Adressen nach Anzahl der Zugriffe
+```
+
+<Aside type="note">
+`uniq` prüft nur *benachbarte* Zeilen. `a, b, a` – hier wird kein Duplikat erkannt. Deshalb immer zuerst `sort`, dann `uniq`.
+</Aside>
+
+---
+
+## Ausschneiden & Ersetzen
+
+### `cut` – Felder ausschneiden
+
+`cut` extrahiert Spalten aus strukturiertem Text:
+
+```bash
+# -d Trennzeichen, -f Feldnummer(n)
+cut -d: -f1 /etc/passwd          # Benutzernamen (Feld 1, getrennt durch :)
+cut -d: -f1,3 /etc/passwd        # Benutzername und UID
+cut -d, -f2-4 daten.csv          # Felder 2 bis 4 einer CSV
+
+# -c Zeichenpositionen
+cut -c1-10 datei.txt             # erste 10 Zeichen jeder Zeile
+```
+
+```bash
+cat /etc/passwd | cut -d: -f1 | sort
+# → alle Benutzernamen alphabetisch
+```
+
+### `tr` – Zeichen übersetzen und löschen
+
+`tr` (*Translate*) ersetzt oder löscht einzelne Zeichen. Es liest nur von stdin:
+
+```bash
+echo "hallo welt" | tr 'a-z' 'A-Z'    # → HALLO WELT
+echo "hallo welt" | tr ' ' '_'         # → hallo_welt
+echo "hallo  welt" | tr -s ' '         # mehrfache Leerzeichen zusammenführen (-s squeeze)
+echo "hallo123" | tr -d '0-9'          # Ziffern löschen (-d delete) → hallo
+cat datei.txt | tr -d '\r'             # Windows-Zeilenenden entfernen
+```
+
+<Tabs>
+  <TabItem label="Zeichenbereiche">
+    ```bash
+    tr 'a-z' 'A-Z'    # Kleinbuchstaben → Großbuchstaben
+    tr 'A-Z' 'a-z'    # Großbuchstaben → Kleinbuchstaben
+    tr '0-9' 'a-j'    # Ziffern → Buchstaben
+    ```
+  </TabItem>
+  <TabItem label="Sonderzeichen">
+    ```bash
+    tr ' ' '\n'       # Leerzeichen → Zeilenumbruch (ein Wort pro Zeile)
+    tr '\n' ' '       # Zeilenumbrüche → Leerzeichen (alles in eine Zeile)
+    tr -d '\r'        # Carriage Returns entfernen (Windows → Unix)
+    ```
+  </TabItem>
+</Tabs>

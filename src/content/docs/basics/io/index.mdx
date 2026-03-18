@@ -1,0 +1,50 @@
+---
+title: Ein-/Ausgabe
+sidebar:
+  order: 1
+  label: Die drei Kanäle
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Jedes Linux-Programm hat beim Start automatisch drei geöffnete **Kommunikationskanäle**:
+
+| Kanal | Nummer | Name | Standard |
+|---|---|---|---|
+| **stdin** | 0 | Standard-Eingabe | Tastatur |
+| **stdout** | 1 | Standard-Ausgabe | Terminal |
+| **stderr** | 2 | Standard-Fehlerausgabe | Terminal |
+
+Das Entscheidende: Ein Programm *weiß nicht*, woher seine Eingabe kommt oder wohin seine Ausgabe geht. Es liest von stdin und schreibt nach stdout – egal ob dahinter eine Tastatur, eine Datei oder ein anderes Programm steckt. Dieses Prinzip ist die Grundlage für Umleitungen und Pipes.
+
+## stdout und stderr in der Praxis
+
+Auf den ersten Blick landen beide Kanäle auf dem Terminal – sie sehen gleich aus:
+
+```bash
+ls /etc/hosts
+# /etc/hosts                     ← stdout
+
+ls /gibt/es/nicht
+# ls: cannot access '/gibt/es/nicht': No such file or directory   ← stderr
+```
+
+Der Unterschied wird sichtbar, sobald man die Ausgabe umleitet: stdout und stderr lassen sich unabhängig voneinander lenken – Fehlermeldungen können so von der normalen Ausgabe getrennt werden.
+
+## stdin in der Praxis
+
+Viele Befehle lesen von stdin, wenn keine Datei als Argument angegeben wird:
+
+```bash
+cat
+# wartet auf Tastatureingabe, gibt jede Zeile direkt zurück
+# Beenden: Strg+D
+```
+
+Das macht sie zu **Filtern** – sie können Daten aus einer Datei, von der Tastatur oder aus einer Pipe verarbeiten, ohne dass der Befehl selbst geändert werden muss.
+
+<Aside type="note">
+Diese drei Kanäle sind in der Unix-Philosophie tief verankert: *"Write programs that do one thing and do it well. Write programs to work together. Write programs to handle text streams."* – Doug McIlroy, einer der Väter von Unix.
+</Aside>
+
+Wie die Kanäle umgeleitet und verbunden werden, zeigen die nächsten beiden Artikel.

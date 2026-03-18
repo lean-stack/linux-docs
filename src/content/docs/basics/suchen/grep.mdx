@@ -1,0 +1,90 @@
+---
+title: grep – in Dateien suchen
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`grep` (*Global Regular Expression Print*) durchsucht Dateien oder stdin nach Zeilen, die ein Muster enthalten, und gibt diese aus.
+
+## Grundlegende Verwendung
+
+```bash
+grep "muster" datei.txt              # Zeilen mit "muster" ausgeben
+grep "fehler" /var/log/syslog        # im Syslog suchen
+grep "root" /etc/passwd              # Benutzer root in passwd
+```
+
+## Mehrere Dateien und Verzeichnisse
+
+```bash
+grep "TODO" *.py                     # in allen .py-Dateien
+grep -r "passwort" /etc/             # rekursiv im Verzeichnis
+grep -r "error" /var/log/ --include="*.log"  # nur in .log-Dateien
+```
+
+## Wichtige Optionen
+
+| Option | Bedeutung |
+|---|---|
+| `-i` | Groß-/Kleinschreibung ignorieren |
+| `-r` | Rekursiv in Verzeichnissen suchen |
+| `-n` | Zeilennummer ausgeben |
+| `-l` | Nur Dateinamen ausgeben (nicht die Treffer) |
+| `-L` | Nur Dateinamen *ohne* Treffer ausgeben |
+| `-v` | Invertieren – Zeilen *ohne* Muster ausgeben |
+| `-c` | Anzahl Treffer pro Datei ausgeben |
+| `-w` | Nur ganze Wörter treffen |
+| `-A n` | n Zeilen *nach* dem Treffer ausgeben |
+| `-B n` | n Zeilen *vor* dem Treffer ausgeben |
+| `-C n` | n Zeilen vor und nach dem Treffer |
+
+```bash
+grep -in "error" /var/log/syslog          # case-insensitiv mit Zeilennummern
+grep -r -l "PermitRootLogin" /etc/        # welche Dateien enthalten die Option?
+grep -v "^#" /etc/ssh/sshd_config         # Zeilen ohne Kommentare anzeigen
+grep -C 3 "failed" /var/log/auth.log      # Kontext um Fehlermeldungen
+```
+
+## grep in Pipelines
+
+Als Filter in einer Pipeline ist `grep` besonders nützlich:
+
+```bash
+ls -la /etc | grep "^d"               # nur Verzeichnisse (Zeilen mit d am Anfang)
+ps aux | grep nginx                    # läuft nginx?
+cat access.log | grep "404" | wc -l   # Anzahl 404-Fehler im Log
+history | grep "ssh"                   # letzte SSH-Befehle aus der Historie
+```
+
+## Reguläre Ausdrücke
+
+`grep` unterstützt reguläre Ausdrücke (Regex). Grundlegende Muster:
+
+| Muster | Bedeutung | Beispiel |
+|---|---|---|
+| `.` | Beliebiges einzelnes Zeichen | `gr.p` trifft `grep`, `grap`, `grip` |
+| `*` | Vorheriges Zeichen 0 oder mehr mal | `go*` trifft `g`, `go`, `goo` |
+| `^` | Zeilenanfang | `^root` – Zeile beginnt mit "root" |
+| `$` | Zeilenende | `sh$` – Zeile endet mit "sh" |
+| `[abc]` | Ein Zeichen aus der Menge | `[Ff]ehler` |
+| `[^abc]` | Kein Zeichen aus der Menge | `[^#]` – nicht # |
+
+```bash
+grep "^#" /etc/ssh/sshd_config         # nur Kommentarzeilen
+grep "sh$" /etc/passwd                 # Benutzer mit Shell am Ende
+grep -E "error|warning|critical" /var/log/syslog  # mehrere Muster (extended regex)
+```
+
+<Aside type="note">
+`grep` verwendet standardmäßig *Basic Regular Expressions* (BRE). Mit `-E` (oder `egrep`) werden *Extended Regular Expressions* (ERE) aktiviert – mit `+`, `?`, `|` und `()` ohne Backslash. Für die meisten Alltagsaufgaben reicht BRE.
+</Aside>
+
+<Aside type="tip">
+Um in komprimierten Log-Dateien zu suchen, gibt es `zgrep` – funktioniert wie `grep`, versteht aber `.gz`-Dateien:
+
+```bash
+zgrep "error" /var/log/syslog.2.gz
+```
+</Aside>

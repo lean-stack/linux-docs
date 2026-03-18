@@ -1,0 +1,80 @@
+---
+title: Umleitung
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Mit **Umleitungsoperatoren** werden die Standard-Kanäle eines Programms mit Dateien verbunden – statt mit Terminal oder Tastatur.
+
+## stdout umleiten: `>` und `>>`
+
+```bash
+ls /etc > ausgabe.txt      # stdout in Datei schreiben (überschreibt)
+ls /etc >> ausgabe.txt     # stdout anhängen (append)
+```
+
+`>` legt die Datei neu an oder überschreibt sie. `>>` hängt an eine bestehende Datei an – ist sie nicht vorhanden, wird sie angelegt.
+
+<Aside type="caution">
+`>` überschreibt ohne Warnung. `echo "neu" > wichtige-datei.txt` löscht den bisherigen Inhalt unwiederbringlich.
+</Aside>
+
+## stdin umleiten: `<`
+
+```bash
+sort < unsortiert.txt      # sort liest aus Datei statt von Tastatur
+wc -l < protokoll.txt      # wc zählt Zeilen in der Datei
+```
+
+In der Praxis selten nötig, da die meisten Befehle Dateien direkt als Argument akzeptieren – `sort unsortiert.txt` ist gleichwertig. Nützlich wird `<` in Skripten und bei Befehlen, die keine Dateiargumente kennen.
+
+## stderr umleiten: `2>`
+
+```bash
+find / -name "*.conf" 2> fehler.txt        # Fehlermeldungen in Datei
+find / -name "*.conf" 2> /dev/null         # Fehlermeldungen verwerfen
+```
+
+`/dev/null` ist ein spezielles Gerät, das alles geschriebene stillschweigend verwirft – das "Schwarze Loch" des Systems.
+
+<Aside type="note">
+Die `2` vor `>` ist die Kanal-Nummer. `1>` wäre stdout explizit – wird aber fast immer als `>` abgekürzt.
+</Aside>
+
+## stdout und stderr kombiniert umleiten
+
+```bash
+befehl > alles.txt 2>&1    # stderr auf stdout umlenken, beide in Datei
+befehl &> alles.txt        # Kurzform (bash): beide Kanäle in Datei
+befehl &>> alles.txt       # beide Kanäle anhängen
+```
+
+`2>&1` bedeutet: "Kanal 2 (stderr) auf dasselbe Ziel wie Kanal 1 (stdout) lenken." Die Reihenfolge ist wichtig – `2>&1` muss *nach* der stdout-Umleitung stehen:
+
+```bash
+befehl > datei.txt 2>&1    # korrekt: erst stdout auf datei.txt, dann stderr dorthin
+befehl 2>&1 > datei.txt    # falsch: stderr geht auf Terminal, stdout in Datei
+```
+
+## stdout verwerfen
+
+```bash
+befehl > /dev/null          # Ausgabe unterdrücken, nur Fehler sichtbar
+befehl > /dev/null 2>&1     # komplett lautlos ausführen
+```
+
+Typischer Einsatz in Skripten, wenn ein Befehl nur wegen seines Exit-Codes ausgeführt wird und die Ausgabe nicht interessiert.
+
+## Übersicht
+
+| Operator | Bedeutung |
+|---|---|
+| `>` | stdout in Datei (überschreiben) |
+| `>>` | stdout in Datei (anhängen) |
+| `<` | stdin aus Datei |
+| `2>` | stderr in Datei |
+| `2>/dev/null` | stderr verwerfen |
+| `&>` | stdout + stderr in Datei |
+| `2>&1` | stderr auf stdout umlenken |

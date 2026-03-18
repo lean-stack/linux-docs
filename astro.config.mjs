@@ -41,6 +41,18 @@ export default defineConfig({
 							label: 'Dateien',
 							autogenerate: { directory: 'basics/dateien' },
 						},
+						{
+							label: 'Ein-/Ausgabe',
+							autogenerate: { directory: 'basics/io' },
+						},
+						{
+							label: 'Filter',
+							autogenerate: { directory: 'basics/filter' },
+						},
+						{
+							label: 'Suchen',
+							autogenerate: { directory: 'basics/suchen' },
+						},
 					],
 				},
 				{

@@ -1,0 +1,83 @@
+---
+title: Pipes
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Eine **Pipe** (`|`) verbindet den stdout eines Befehls direkt mit dem stdin des nächsten – ohne eine temporäre Datei. Die beiden Programme laufen dabei gleichzeitig; der erste produziert Daten, der zweite verarbeitet sie sofort.
+
+```bash
+befehl1 | befehl2
+```
+
+## Einfache Beispiele
+
+```bash
+ls /etc | sort -r           # Verzeichnisinhalt umgekehrt sortieren
+cat /etc/passwd | wc -l     # Anzahl Zeilen in /etc/passwd zählen
+echo "hallo welt" | tr 'a-z' 'A-Z'   # in Großbuchstaben umwandeln
+```
+
+## Pipelines – mehrere Befehle verketten
+
+Mehrere Pipes lassen sich zu einer **Pipeline** verketten. Die Daten fließen von links nach rechts durch jeden Befehl:
+
+```bash
+cat /etc/passwd | cut -d: -f1 | sort | head -5
+# → erste 5 Benutzernamen alphabetisch sortiert
+```
+
+Schritt für Schritt:
+1. `cat /etc/passwd` – gibt die Datei aus
+2. `cut -d: -f1` – schneidet das erste `:`-getrennte Feld heraus (Benutzername)
+3. `sort` – sortiert alphabetisch
+4. `head -5` – zeigt nur die ersten 5 Zeilen
+
+```bash
+ls -lh /var/log/*.log | sort -k5 -h | tail -5
+# → die 5 größten Log-Dateien nach Größe sortiert
+```
+
+<Aside type="tip">
+Beim Entwickeln einer langen Pipeline schrittweise vorgehen: Erst `befehl1` ausführen und Ausgabe prüfen, dann `befehl1 | befehl2`, usw. So sieht man an jeder Stelle, was die Pipeline bisher produziert.
+</Aside>
+
+## Pipes und stderr
+
+Die Pipe verbindet **nur stdout** – stderr fließt weiterhin direkt auf das Terminal:
+
+```bash
+ls /etc /nichtvorhanden | wc -l
+# ls: cannot access '/nichtvorhanden': No such file or directory  ← stderr aufs Terminal
+# 212                                                              ← stdout durch Pipe an wc
+```
+
+Sollen auch Fehlermeldungen durch die Pipe fließen:
+
+```bash
+ls /etc /nichtvorhanden 2>&1 | grep "No such"
+# ls: cannot access '/nichtvorhanden': No such file or directory
+```
+
+## Pipe vs. Umleitung
+
+```
+Umleitung:  befehl > datei.txt
+
+  ┌─────────┐  stdout   ┌───────────┐
+  │ befehl  │ ─────────►│ datei.txt │
+  └─────────┘           └───────────┘
+
+
+Pipe:  befehl1 | befehl2
+
+  ┌──────────┐  stdout    stdin  ┌──────────┐
+  │ befehl1  │ ─────────────────►│ befehl2  │
+  └──────────┘                   └──────────┘
+```
+
+<Aside type="note">
+Pipes sind oft schneller als der Umweg über eine temporäre Datei (`befehl1 > tmp.txt && befehl2 < tmp.txt`), weil keine Disk-I/O anfällt. Bei sehr großen Datenmengen ist das ein spürbarer Unterschied.
+</Aside>

@@ -1,0 +1,21 @@
+---
+title: Filter-Kommandos
+sidebar:
+  order: 1
+  label: Einführung
+---
+
+Als **Filter** bezeichnet man in Unix/Linux Programme, die Daten von stdin lesen, verarbeiten und nach stdout schreiben – sie filtern, transformieren oder zählen Textdaten im Datenstrom.
+
+Filter sind die Bausteine von Pipelines. Jeder einzelne Filter macht eine Sache gut; zusammengesetzt lösen sie komplexe Aufgaben:
+
+```bash
+cat zugriffe.log | grep "ERROR" | sort | uniq -c | sort -rn | head -10
+# → die 10 häufigsten Fehlermeldungen im Log, absteigend sortiert
+```
+
+Die wichtigsten Filter-Kommandos:
+
+- [Anzeigen & Zählen](befehle#anzeigen--zählen) – `cat`, `head`, `tail`, `wc`, `less`
+- [Sortieren & Filtern](befehle#sortieren--filtern) – `sort`, `uniq`
+- [Ausschneiden & Ersetzen](befehle#ausschneiden--ersetzen) – `cut`, `tr`
