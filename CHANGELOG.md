@@ -1,6 +1,14 @@
 # Changelog
 
 
+## v0.2.1
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v0.2.0...v0.2.1)
+
+### 🩹 Fixes
+
+- Add grep filter to filter pages. ([816cfc0](https://github.com/lean-stack/linux-docs/commit/816cfc0))
+
 ## v0.2.0
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v0.1.0...v0.2.0)
