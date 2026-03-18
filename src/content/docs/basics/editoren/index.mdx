@@ -1,0 +1,56 @@
+---
+title: Editoren
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Früher oder später muss man unter Linux eine Textdatei bearbeiten – eine Konfigurationsdatei anpassen, ein Shell-Skript schreiben oder eine Notiz hinterlassen. Dafür braucht man einen **Texteditor**.
+
+## Terminal-Editoren
+
+Auf einem Server ohne grafische Oberfläche – oder in einer SSH-Sitzung – sind nur **Terminal-Editoren** verfügbar. Sie laufen vollständig in der Shell und kommen ohne Maus aus.
+
+| Editor | Lernkurve | Stärken | Vorinstalliert |
+|---|---|---|---|
+| **vi / vim** | Steil | Auf jedem System vorhanden; sehr mächtig | Fast immer |
+| **nano** | Flach | Einsteigerfreundlich; Tastenkürzel immer sichtbar | Oft |
+| **emacs** | Sehr steil | Extrem erweiterbar; fast ein Betriebssystem für sich | Selten |
+| **micro** | Flach | Moderne Tastenkürzel (Strg+S, Strg+C); intuitiv | Selten |
+
+<Aside type="tip">
+**Empfehlung für den Einstieg:** `nano` für schnelle, einfache Bearbeitungen – die wichtigsten Tasten stehen immer unten im Terminal. `vi`/`vim` sollte man zumindest in den Grundzügen kennen, da es auf wirklich *jedem* Linux-System – egal wie minimal – verfügbar ist.
+</Aside>
+
+### nano – kurze Übersicht
+
+nano zeigt die wichtigsten Tastenkürzel am unteren Bildschirmrand. Das `^` steht für die `Strg`-Taste:
+
+```bash
+nano datei.txt
+```
+
+| Kürzel | Aktion |
+|---|---|
+| `Strg`+`S` | Speichern |
+| `Strg`+`X` | Beenden (fragt bei Änderungen nach) |
+| `Strg`+`W` | Suchen |
+| `Strg`+`K` | Zeile ausschneiden |
+| `Strg`+`U` | Einfügen |
+
+## Grafische Editoren
+
+Auf Desktop-Systemen stehen je nach Umgebung grafische Editoren zur Verfügung:
+
+| Desktop | Editor | Hinweis |
+|---|---|---|
+| GNOME | **gedit** / **GNOME Text Editor** | Einfach, gut für Einsteiger |
+| KDE Plasma | **Kate** / **KWrite** | Mächtig, mit Syntax-Highlighting |
+| Universell | **VS Code** | Weit verbreitet; auch für Remote-Entwicklung über SSH |
+| Universell | **Geany** | Leichtgewichtig; gut für ältere Hardware |
+
+<Aside type="note">
+Für die Administration von Servern sind grafische Editoren in der Regel keine Option – dort ist Wissen über Terminal-Editoren, insbesondere `vi`, unverzichtbar.
+</Aside>

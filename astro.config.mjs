@@ -42,6 +42,10 @@ export default defineConfig({
 							autogenerate: { directory: 'basics/dateien' },
 						},
 						{
+							label: 'Editoren',
+							autogenerate: { directory: 'basics/editoren' },
+						},
+						{
 							label: 'Ein-/Ausgabe',
 							autogenerate: { directory: 'basics/io' },
 						},

@@ -1,0 +1,115 @@
+---
+title: vi / vim
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`vi` ist der älteste und am weitesten verbreitete Terminal-Editor unter Unix/Linux. `vim` (*Vi IMproved*) ist die moderne, erweiterte Version. Auf nahezu jedem Linux-System ist mindestens `vi` vorhanden – oft zeigt `vi` auf `vim`.
+
+```bash
+vi datei.txt
+vim datei.txt
+```
+
+<Aside type="note">
+vim ist kein einfacher Editor – aber man muss nicht alles kennen, um produktiv damit zu sein. Diese Seite zeigt das absolute Minimum: Datei öffnen, Text eingeben, speichern, beenden.
+</Aside>
+
+## Das Konzept: Modi
+
+Der wichtigste Unterschied zu anderen Editoren: vim ist **modal**. Tasten haben je nach aktivem Modus unterschiedliche Bedeutungen. Wer das nicht weiß, ist verloren – wer es verstanden hat, kommt zurecht.
+
+```
+┌─────────────────────────────────────────────┐
+│                                             │
+│   NORMAL-MODUS          INSERT-MODUS        │
+│   (Standard)            (Eingabe)           │
+│                                             │
+│   Befehle ausführen  ←Esc──  Text tippen    │
+│   Navigation            ──i→               │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+- **Normal-Modus** – vim startet immer hier. Tasten sind Befehle, kein Text wird eingegeben.
+- **Insert-Modus** – Text wird wie gewohnt getippt. Unten im Terminal erscheint `-- INSERT --`.
+
+## Minimaler Workflow
+
+### 1. Datei öffnen
+
+```bash
+vim datei.txt       # Datei öffnen (wird angelegt, falls nicht vorhanden)
+```
+
+vim startet im **Normal-Modus**. Der Cursor steht am Anfang.
+
+### 2. Text eingeben: in den Insert-Modus wechseln
+
+```
+i        vor dem Cursor in den Insert-Modus
+a        nach dem Cursor in den Insert-Modus (append)
+o        neue Zeile unterhalb öffnen und Insert-Modus
+```
+
+Im Insert-Modus lässt sich Text normal eintippen.
+
+### 3. Zurück in den Normal-Modus
+
+```
+Esc      immer: zurück in den Normal-Modus
+```
+
+<Aside type="tip">
+Im Zweifel: `Esc` drücken. Mehrfach. vim ist immer wieder im Normal-Modus landbar – egal in welchem Zustand.
+</Aside>
+
+### 4. Speichern und Beenden
+
+Im Normal-Modus werden Befehle mit `:` eingeleitet. Der Befehl erscheint unten im Terminal:
+
+| Befehl | Bedeutung |
+|---|---|
+| `:w` | Speichern (*write*) |
+| `:q` | Beenden (*quit*) – nur wenn keine ungespeicherten Änderungen |
+| `:wq` | Speichern und beenden |
+| `:x` | Speichern und beenden (nur wenn Änderungen vorhanden) |
+| `:q!` | Beenden **ohne** Speichern (Änderungen verwerfen) |
+
+## Grundlegende Navigation im Normal-Modus
+
+Die Pfeiltasten funktionieren – aber vim-Nutzer verwenden traditionell:
+
+| Taste | Bewegung |
+|---|---|
+| `h` / `l` | Zeichen links / rechts |
+| `j` / `k` | Zeile runter / rauf |
+| `0` / `$` | Zeilenanfang / Zeilenende |
+| `gg` / `G` | Erste / letzte Zeile |
+| `w` / `b` | Nächstes / vorheriges Wort |
+
+## Ein paar nützliche Normal-Modus-Befehle
+
+| Befehl | Aktion |
+|---|---|
+| `dd` | Aktuelle Zeile löschen |
+| `yy` | Aktuelle Zeile kopieren (*yank*) |
+| `p` | Nach Cursor einfügen (*paste*) |
+| `u` | Rückgängig (*undo*) |
+| `Strg`+`r` | Wiederholen (*redo*) |
+| `/suchbegriff` | Vorwärts suchen |
+| `n` / `N` | Nächsten / vorherigen Treffer |
+
+## Weiterlernen
+
+Diese Seite zeigt das Minimum. vim kann deutlich mehr – aber das lernt man am besten interaktiv:
+
+**vimtutor** – ein eingebautes interaktives Tutorial, das ca. 30 Minuten dauert und die wichtigsten Konzepte Schritt für Schritt erklärt:
+
+```bash
+vimtutor
+```
+
+Für eine kompakte Referenz: **[Vi Intro & Cheat Sheet – IBM Developer](https://developer.ibm.com/tutorials/l-vi/)** – gute Übersicht über die häufigsten Befehle.
