@@ -1,6 +1,15 @@
 # Changelog
 
 
+## v0.2.0
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v0.1.0...v0.2.0)
+
+### 🚀 Enhancements
+
+- Add articles for io channels, search and filter. ([0179c99](https://github.com/lean-stack/linux-docs/commit/0179c99))
+- Add editor pages. ([fc5d3c1](https://github.com/lean-stack/linux-docs/commit/fc5d3c1))
+
 ## v0.1.0
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v0.1.0-pre.2...v0.1.0)
