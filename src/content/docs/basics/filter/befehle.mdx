@@ -127,6 +127,18 @@ cat access.log | cut -d' ' -f1 | sort | uniq -c | sort -rn | head -10
 `uniq` prüft nur *benachbarte* Zeilen. `a, b, a` – hier wird kein Duplikat erkannt. Deshalb immer zuerst `sort`, dann `uniq`.
 </Aside>
 
+### `grep` – Zeilen filtern
+
+`grep` gibt nur die Zeilen aus, die ein bestimmtes Muster enthalten – und ist damit der klassische Zeilenfilter in Pipelines:
+
+```bash
+grep "ERROR" /var/log/syslog          # Zeilen mit "ERROR" ausgeben
+grep -v "^#" /etc/ssh/sshd_config     # Kommentarzeilen ausblenden
+cat access.log | grep "404" | wc -l   # Anzahl 404-Fehler zählen
+```
+
+`grep` ist als Suchwerkeug so mächtig, dass es einen eigenen Artikel im Abschnitt [Suchen](../suchen/grep) bekommt.
+
 ---
 
 ## Ausschneiden & Ersetzen
