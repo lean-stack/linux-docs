@@ -1,0 +1,179 @@
+---
+title: Prozesse anzeigen
+sidebar:
+  order: 2
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## `ps` – Schnappschuss
+
+`ps` (*Process Status*) zeigt eine Momentaufnahme der laufenden Prozesse. Ohne Optionen zeigt es nur die Prozesse der aktuellen Shell-Sitzung.
+
+### Die drei Optionsstile
+
+`ps` ist historisch gewachsen und unterstützt drei verschiedene Optionsstile – was beim ersten Blick in die Manpage verwirrt:
+
+| Stil | Kennzeichen | Herkunft | Beispiel |
+|---|---|---|---|
+| **UNIX** | Optionen mit `-` | POSIX-Standard | `ps -e -f` oder `ps -ef` |
+| **BSD** | Optionen **ohne** `-` | BSD Unix | `ps aux` |
+| **GNU** | Lange Optionen mit `--` | GNU/Linux-Erweiterung | `ps --forest` |
+
+Diese Stile lassen sich – in Grenzen – auch kombinieren:
+
+```bash
+ps -ef --forest     # UNIX + GNU: alle Prozesse als Baum
+ps aux --forest     # BSD  + GNU: dasselbe, anderes Ausgabeformat
+```
+
+<Aside type="note">
+Der Unterschied zwischen `ps -aux` (UNIX) und `ps aux` (BSD) ist nicht nur Kosmetik – `ps -aux` bedeutet in UNIX-Syntax "alle Prozesse von Benutzer `x`" und würde eine Warnung erzeugen. Auf Linux-Systemen versteht `ps` den Unterschied und macht in der Praxis dasselbe daraus, aber es lohnt sich, den Stil konsistent zu halten.
+</Aside>
+
+### Eigene Lieblingskombination finden
+
+`ps` hat Dutzende Optionen – niemand kennt sie alle auswendig. In der Praxis merkt man sich **eine oder zwei Kombinationen**, die für den eigenen Alltag passen, und greift bei Bedarf zur Manpage:
+
+```bash
+ps aux              # weit verbreitet; zeigt USER, %CPU, %MEM, COMMAND
+ps -ef              # ebenfalls verbreitet; zeigt UID, PID, PPID, TIME, CMD
+ps -ef --forest     # wie -ef, aber mit Baumdarstellung der Eltern-Kind-Beziehungen
+ps -eo pid,user,ni,stat,cmd   # eigene Spaltenauswahl mit -o
+```
+
+Mit `-o` lässt sich die Ausgabe exakt auf die gewünschten Felder reduzieren:
+
+```bash
+ps -eo pid,ppid,user,stat,cmd --sort=-%cpu | head -10
+# Top-10 Prozesse nach CPU-Auslastung, mit PID, PPID, User, Zustand und Befehl
+```
+
+### Spalten verstehen: `ps aux`
+
+```
+USER       PID  %CPU %MEM    VSZ   RSS  STAT  COMMAND
+root         1   0.0  0.1 168940 11832  Ss   /sbin/init
+alice      892   0.0  0.1  10936  5120  Ss   bash
+alice     1034   1.2  0.8 234512 34816  Sl   vim bericht.txt
+```
+
+| Spalte | Bedeutung |
+|---|---|
+| `USER` | Besitzender Benutzer |
+| `PID` | Prozess-ID |
+| `%CPU` | CPU-Auslastung |
+| `%MEM` | Anteil am physischen RAM |
+| `VSZ` | Virtueller Speicher (KB) |
+| `RSS` | Tatsächlich genutzter RAM (*Resident Set Size*, KB) |
+| `STAT` | Prozesszustand (siehe unten) |
+| `COMMAND` | Startbefehl |
+
+### Zustandscodes in der STAT-Spalte
+
+| Code | Bedeutung |
+|---|---|
+| `R` | Running |
+| `S` | Sleeping (unterbrechbar) |
+| `D` | Sleeping (nicht unterbrechbar – wartet auf I/O) |
+| `T` | Stopped |
+| `Z` | Zombie |
+| `s` | Session-Leader |
+| `l` | Multi-threaded |
+| `+` | Im Vordergrund |
+| `<` | Erhöhte Priorität |
+| `N` | Niedrige Priorität (nice) |
+
+### Gezielt suchen mit `ps` und `grep`
+
+```bash
+ps aux | grep nginx          # läuft nginx?
+ps aux | grep -v grep        # grep selbst aus der Liste entfernen
+ps -ef | grep "python"       # Python-Prozesse finden
+```
+
+## `top` – interaktive Echtzeitansicht
+
+`top` zeigt laufend aktualisierte Prozessinformationen und gibt einen Überblick über die Systemauslastung:
+
+```bash
+top
+```
+
+```
+top - 14:32:01 up 3 days, 2:14,  2 users,  load average: 0.42, 0.38, 0.31
+Tasks: 187 total,   1 running, 186 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  3.2 us,  1.1 sy,  0.0 ni, 95.4 id,  0.2 wa,  0.0 hi,  0.1 si
+MiB Mem :  15927.1 total,   8234.2 free,   4521.3 used,   3171.6 buff/cache
+MiB Swap:   2048.0 total,   2048.0 free,      0.0 used.  10892.4 avail Mem
+
+  PID USER      PR  NI    VIRT    RES  SHR S  %CPU  %MEM     TIME+ COMMAND
+ 1034 alice     20   0  234512  34816 28400 S   1.2   0.2   0:03.14 vim
+  892 alice     20   0   10936   5120  3840 S   0.0   0.0   0:00.42 bash
+```
+
+### Tastenbefehle in `top`
+
+| Taste | Aktion |
+|---|---|
+| `q` | Beenden |
+| `h` | Hilfe |
+| `k` | Prozess beenden (PID eingeben, dann Signal) |
+| `r` | Priorität ändern (renice) |
+| `u` | Nach Benutzer filtern |
+| `M` | Nach Speicherverbrauch sortieren |
+| `P` | Nach CPU-Auslastung sortieren (Standard) |
+| `T` | Nach Laufzeit sortieren |
+| `1` | CPU-Kerne einzeln anzeigen |
+
+### Kopfzeile verstehen
+
+- **load average**: Durchschnittliche CPU-Last der letzten 1, 5 und 15 Minuten. Wert ≤ Anzahl CPU-Kerne = System nicht überlastet.
+- **us/sy/id/wa**: CPU-Zeit für User-Prozesse / System / Idle / Warten auf I/O
+
+<Aside type="tip">
+`htop` ist eine modernere, farbige Alternative zu `top` mit Mausunterstützung und intuitiver Bedienung. Auf vielen Systemen nachrüstbar:
+
+```bash
+apt install htop     # Debian/Ubuntu
+dnf install htop     # Fedora/RHEL
+```
+</Aside>
+
+## `pgrep` – Prozesse nach Name finden
+
+`pgrep` gibt die PIDs von Prozessen aus, deren Name auf ein Muster passt:
+
+```bash
+pgrep bash          # alle bash-PIDs
+pgrep -u alice      # alle Prozesse von alice
+pgrep -la nginx     # PIDs und Namen anzeigen (-l)
+pgrep -c sshd       # Anzahl matching Prozesse
+```
+
+Nützlich in Skripten – statt `ps aux | grep ... | awk ...`:
+
+```bash
+if pgrep nginx > /dev/null; then
+    echo "nginx läuft"
+fi
+```
+
+## `pstree` – Prozessbaum visualisieren
+
+`pstree` zeigt alle Prozesse als Baum und macht Eltern-Kind-Beziehungen sofort sichtbar:
+
+```bash
+pstree              # gesamter Baum ab PID 1
+pstree alice        # nur Prozesse von alice
+pstree -p           # mit PIDs
+pstree -u           # mit Benutzernamen
+pstree $$           # Baum ab aktueller Shell
+```
+
+```
+systemd─┬─sshd───sshd───bash───pstree
+        ├─cron
+        └─nginx─┬─nginx
+                └─nginx
+```

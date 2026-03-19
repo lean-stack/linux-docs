@@ -1,0 +1,92 @@
+---
+title: Prioritäten
+sidebar:
+  order: 5
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Linux verteilt CPU-Zeit nach Prioritäten. Prozesse mit höherer Priorität bekommen mehr Rechenzeit zugeteilt. Diese Priorität lässt sich beim Start eines Prozesses festlegen und während der Laufzeit anpassen.
+
+## Der Nice-Wert
+
+Die Priorität eines normalen Prozesses wird durch den **Nice-Wert** (*niceness*) ausgedrückt:
+
+```
+-20  ──────────────────────────────────────  +19
+ │                                            │
+höchste Priorität               niedrigste Priorität
+(wenig "nett" zu anderen)       (sehr "nett" zu anderen)
+```
+
+- Standardwert: **0**
+- Niedrigerer Nice-Wert = höhere Priorität = mehr CPU
+- Höherer Nice-Wert = niedrigere Priorität = weniger CPU
+
+Der Name kommt von der Idee: Ein Prozess mit hohem Nice-Wert ist "nett" zu anderen – er tritt ihnen bereitwillig CPU-Zeit ab.
+
+```bash
+ps -l                   # Nice-Wert in der NI-Spalte anzeigen
+top                     # NI-Spalte in der Prozessliste
+```
+
+## `nice` – Prozess mit Priorität starten
+
+```bash
+nice befehl                     # mit Nice-Wert +10 starten (konservativer Standard)
+nice -n 10 befehl               # explizit Nice-Wert +10
+nice -n 19 ./backup.sh          # niedrigste Priorität – läuft im Hintergrund weg
+nice -n -10 ./zeitkritisch.sh   # erhöhte Priorität (nur root!)
+```
+
+Typischer Einsatz: ressourcenintensive Prozesse, die andere nicht stören sollen:
+
+```bash
+nice -n 15 tar -czf backup.tar.gz /home &
+nice -n 19 find / -name "*.log" > logdateien.txt &
+```
+
+<Aside type="caution">
+Nur **root** darf negative Nice-Werte setzen (Priorität erhöhen). Normale Benutzer können Nice-Werte nur erhöhen (Priorität senken) – ein einmal erhöhter Wert lässt sich nicht mehr selbst senken.
+</Aside>
+
+## `renice` – Priorität laufender Prozesse ändern
+
+`renice` ändert den Nice-Wert eines bereits laufenden Prozesses:
+
+```bash
+renice 10 -p 1034           # Prozess mit PID 1034 auf Nice +10 setzen
+renice 19 -p 1034 1035      # mehrere PIDs auf einmal
+renice 5 -u alice           # alle Prozesse von alice auf +5 setzen
+renice -5 -p 1034           # auf -5 erhöhen (nur root!)
+```
+
+### Praktisches Beispiel
+
+Ein Backup-Skript läuft und verlangsamt das System:
+
+```bash
+pgrep backup.sh             # PID herausfinden: 2847
+renice 19 -p 2847           # auf niedrigste Priorität setzen
+```
+
+## Zusammenhang: Nice-Wert und Prozessanzeige
+
+In `top` und `ps -l` erscheinen zwei Prioritätsspalten:
+
+| Spalte | Bedeutung |
+|---|---|
+| `NI` | Nice-Wert (-20 bis +19) |
+| `PR` | Kernel-interne Priorität (berechnet aus Nice-Wert) |
+
+```bash
+ps -l -p 1034
+# F S   UID   PID  PPID  C PRI  NI ADDR SZ WCHAN  TTY          TIME CMD
+# 0 S  1000  1034   892  0  80   0 -  5877 -      pts/0    00:00:03 vim
+#                                     ^^
+#                                     NI = 0 (Standard)
+```
+
+<Aside type="note">
+Neben dem normalen Nice-Scheduler gibt es unter Linux auch **Echtzeit-Prioritäten** (`SCHED_FIFO`, `SCHED_RR`) für zeitkritische Prozesse – etwa Audio-Software oder Steuerungssysteme. Diese sind für den normalen Admin-Alltag selten relevant, aber der Vollständigkeit halber: Sie liegen außerhalb des Nice-Systems und haben immer Vorrang vor normalen Prozessen.
+</Aside>

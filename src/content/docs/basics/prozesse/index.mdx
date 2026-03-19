@@ -1,0 +1,108 @@
+---
+title: Prozessverwaltung
+sidebar:
+  order: 1
+  label: Was ist ein Prozess?
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Ein **Prozess** ist ein laufendes Programm. Der Unterschied ist wichtig: Ein Programm ist eine Datei auf der Festplatte (`/usr/bin/bash`), ein Prozess ist die lebende Instanz davon im Arbeitsspeicher – mit eigenem Speicher, eigenem Zustand und eigener Identität.
+
+Dasselbe Programm kann gleichzeitig in mehreren Prozessen laufen – etwa wenn zwei Benutzer gleichzeitig eine Shell öffnen: zwei Prozesse, ein Programm.
+
+## PID und PPID
+
+Jeder Prozess bekommt beim Start eine eindeutige **PID** (*Process ID*) – eine fortlaufende Nummer. Zusätzlich kennt jeder Prozess seine **PPID** (*Parent PID*): die PID des Prozesses, der ihn gestartet hat.
+
+```bash
+echo $$          # PID der aktuellen Shell
+echo $PPID       # PPID der aktuellen Shell
+```
+
+Daraus ergibt sich ein **Prozessbaum**: Jeder Prozess hat genau einen Elternprozess, kann aber beliebig viele Kindprozesse haben.
+
+## PID 1: der Urvater
+
+Beim Systemstart ist der erste Prozess, den der Kernel startet, immer **PID 1**. Auf modernen Linux-Systemen ist das `systemd`. Alle anderen Prozesse sind direkte oder indirekte Kinder davon:
+
+```
+PID 1: systemd
+├── PID 312: sshd
+│   └── PID 891: sshd (Sitzung alice)
+│       └── PID 892: bash
+│           └── PID 1034: vim bericht.txt
+├── PID 318: cron
+└── PID 421: nginx
+    ├── PID 422: nginx (worker)
+    └── PID 423: nginx (worker)
+```
+
+## Wie Prozesse entstehen: Fork & Exec
+
+Neue Prozesse entstehen in Linux immer nach demselben Muster:
+
+1. **Fork** – Ein laufender Prozess erstellt eine identische Kopie von sich selbst. Die Kopie ist der neue Kindprozess.
+2. **Exec** – Der Kindprozess ersetzt sein Programm durch ein anderes (z. B. `vim`).
+
+Wenn man in der Shell `vim datei.txt` eingibt, forkt die Shell sich selbst, und der Kindprozess führt dann `exec vim` aus. Die Shell (Elternprozess) wartet, bis `vim` beendet ist.
+
+<Aside type="note">
+Dieses Fork/Exec-Modell ist der Grund, warum jeder Prozess immer einen Elternprozess hat – und warum PID 1 so besonders ist: Er hat keinen Elternprozess außer dem Kernel selbst.
+</Aside>
+
+## Prozesszustände
+
+Ein Prozess befindet sich zu jedem Zeitpunkt in einem von mehreren Zuständen:
+
+```
+         fork()
+            │
+            ▼
+       ┌─────────┐   Scheduler   ┌─────────┐
+       │ READY   │ ────────────► │ RUNNING │
+       │ (bereit)│ ◄──────────── │(läuft)  │
+       └─────────┘  Zeitscheibe  └────┬────┘
+                                      │
+              ┌───────────────────────┼───────────────────┐
+              │                       │                   │
+              ▼                       ▼                   ▼
+        ┌──────────┐           ┌──────────┐        ┌──────────┐
+        │SLEEPING  │           │ STOPPED  │        │  ZOMBIE  │
+        │(wartet)  │           │(gestoppt)│        │(beendet, │
+        └──────────┘           └──────────┘        │ nicht    │
+              │                      │             │ abgeholt)│
+              │ Ereignis             │ SIGCONT     └──────────┘
+              └──────────────────────┘
+```
+
+| Zustand | Bedeutung |
+|---|---|
+| **Running** | Prozess wird gerade von der CPU ausgeführt |
+| **Ready** | Prozess ist bereit, wartet auf CPU-Zuteilung |
+| **Sleeping** | Wartet auf ein Ereignis (Tastatureingabe, Netzwerk, Datei) |
+| **Stopped** | Durch Signal angehalten (z. B. `Strg`+`Z`) |
+| **Zombie** | Beendet, aber Elternprozess hat Exit-Code noch nicht abgeholt |
+
+## Das `/proc`-Dateisystem
+
+Linux macht Prozessinformationen als virtuelle Dateien zugänglich – im Verzeichnis `/proc`. Für jeden laufenden Prozess existiert dort ein Unterverzeichnis mit seiner PID:
+
+```bash
+ls /proc/$$          # Verzeichnis der aktuellen Shell
+cat /proc/$$/status  # Statusinfos: Name, PID, PPID, Zustand, Speicher
+cat /proc/$$/cmdline # Mit welchem Befehl gestartet?
+ls /proc/$$/fd       # Offene Datei-Handles (Dateideskriptoren)
+```
+
+```bash
+cat /proc/$$/status | grep -E "^(Name|Pid|PPid|State)"
+# Name:  bash
+# Pid:   892
+# PPid:  891
+# State: S (sleeping)
+```
+
+<Aside type="note">
+`/proc` ist kein echtes Dateisystem auf einer Festplatte – die Dateien existieren nur im Arbeitsspeicher und werden vom Kernel dynamisch erzeugt. Viele System-Tools wie `ps` und `top` lesen ihre Informationen genau von dort.
+</Aside>

@@ -1,0 +1,159 @@
+---
+title: Funktionen
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Funktionen fassen mehrfach benötigte Logik zusammen, machen Skripte lesbarer und ermöglichen es, Verhalten zu parametrisieren ohne Code zu wiederholen.
+
+## Definition und Aufruf
+
+```bash
+# Schreibweise 1 (bash-spezifisch)
+function meine_funktion() {
+    echo "Hallo aus der Funktion"
+}
+
+# Schreibweise 2 (POSIX-kompatibel)
+meine_funktion() {
+    echo "Hallo aus der Funktion"
+}
+
+# Aufruf – wie ein normaler Befehl
+meine_funktion
+```
+
+<Aside type="note">
+Funktionen müssen **vor** ihrem ersten Aufruf definiert sein. Üblich: Alle Funktionen am Anfang des Skripts definieren, das Hauptprogramm am Ende.
+</Aside>
+
+## Parameter
+
+Innerhalb einer Funktion stehen `$1`, `$2`, `$@` usw. für die **Funktionsargumente** – nicht für die Skript-Argumente:
+
+```bash
+function begrüssen() {
+    local NAME="$1"
+    local GRUSS="${2:-Hallo}"     # Standardwert falls $2 fehlt
+    echo "$GRUSS, $NAME!"
+}
+
+begrüssen "Alice"           # → Hallo, Alice!
+begrüssen "Bob" "Moin"      # → Moin, Bob!
+```
+
+## Lokale Variablen: `local`
+
+Ohne `local` sind Variablen in Funktionen **global** – sie überschreiben gleichnamige Variablen im Rest des Skripts:
+
+```bash
+WERT="global"
+
+function test_lokal() {
+    local WERT="lokal"      # nur innerhalb der Funktion sichtbar
+    echo "Innen: $WERT"     # → lokal
+}
+
+test_lokal
+echo "Außen: $WERT"         # → global
+```
+
+<Aside type="caution">
+`local` immer verwenden, außer man will bewusst eine globale Variable setzen. Ohne `local` entstehen schwer auffindbare Bugs durch unbeabsichtigte Überschreibungen.
+</Aside>
+
+## Rückgabewerte und Exit-Codes
+
+Bash-Funktionen können **keinen beliebigen Wert zurückgeben** – `return` akzeptiert nur Zahlen von 0 bis 255, die als Exit-Code interpretiert werden:
+
+```bash
+function datei_existiert() {
+    [[ -f "$1" ]]    # Exit-Code 0 (wahr) oder 1 (falsch)
+}
+
+if datei_existiert "/etc/passwd"; then
+    echo "Datei gefunden"
+fi
+```
+
+Einen **String zurückgeben** geht über `echo` + Kommando-Substitution:
+
+```bash
+function dateiname_ohne_pfad() {
+    echo "${1##*/}"
+}
+
+DATEI="/home/alice/dokumente/bericht.txt"
+NAME=$(dateiname_ohne_pfad "$DATEI")
+echo "$NAME"    # → bericht.txt
+```
+
+Den letzten Exit-Code einer Funktion enthält `$?`:
+
+```bash
+function verbinden() {
+    ping -c1 "$1" &>/dev/null
+}
+
+verbinden "server.de"
+if [[ $? -eq 0 ]]; then
+    echo "Verbindung OK"
+else
+    echo "Keine Verbindung"
+fi
+
+# Kürzer:
+if verbinden "server.de"; then
+    echo "Verbindung OK"
+fi
+```
+
+## Fehlerbehandlung in Funktionen
+
+Eine nützliche Konvention: Fehlermeldungen nach `stderr` schreiben, Nutzausgaben nach `stdout`. Das macht Funktionen pipe-freundlich:
+
+```bash
+function log_fehler() {
+    echo "[FEHLER] $*" >&2    # nach stderr
+}
+
+function log_info() {
+    echo "[INFO]  $*"          # nach stdout
+}
+
+function datei_lesen() {
+    local DATEI="$1"
+    if [[ ! -f "$DATEI" ]]; then
+        log_fehler "Datei nicht gefunden: $DATEI"
+        return 1
+    fi
+    cat "$DATEI"
+}
+```
+
+## Bibliotheken: Funktionen auslagern
+
+Häufig genutzte Funktionen lassen sich in eine separate Datei auslagern und mit `source` (oder `.`) einbinden:
+
+```bash
+# lib/utils.sh
+function log_info()  { echo "[INFO]  $*"; }
+function log_fehler() { echo "[FEHLER] $*" >&2; }
+function datei_prüfen() { [[ -f "$1" ]] || { log_fehler "Fehlt: $1"; return 1; }; }
+```
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+source "$(dirname "$0")/lib/utils.sh"    # Bibliothek laden
+
+log_info "Skript startet"
+datei_prüfen "/etc/config.conf"
+```
+
+<Aside type="tip">
+`$(dirname "$0")/lib/utils.sh` findet die Bibliothek relativ zum Skript-Verzeichnis – nicht zum aktuellen Arbeitsverzeichnis. Das macht Skripte portabler.
+</Aside>

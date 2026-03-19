@@ -1,0 +1,119 @@
+---
+title: Vordergrund & Hintergrund
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Wenn ein Befehl in der Shell gestartet wird, läuft er standardmäßig im **Vordergrund**: Die Shell wartet, bis der Prozess beendet ist – in dieser Zeit nimmt sie keine weiteren Befehle an. Lange laufende Prozesse lassen sich stattdessen in den **Hintergrund** schicken.
+
+## Vordergrundprozesse steuern
+
+### `Strg`+`C` – Prozess beenden
+
+Sendet **SIGINT** (*Interrupt*) an den Vordergrundprozess. Die meisten Programme beenden sich daraufhin sauber:
+
+```bash
+ping google.com
+# PING google.com ...
+# ^C                  ← Strg+C
+# --- ping statistics ---
+```
+
+### `Strg`+`Z` – Prozess anhalten
+
+Sendet **SIGSTOP** und versetzt den Prozess in den Zustand *Stopped* – er ist nicht beendet, nur eingefroren:
+
+```bash
+vim bericht.txt
+# (bearbeiten...)
+# ^Z
+# [1]+  Stopped    vim bericht.txt
+```
+
+Die Shell meldet sich zurück. Der Prozess wartet im Hintergrund auf Weiterführung.
+
+## Hintergrundjobs verwalten
+
+### `jobs` – laufende Jobs anzeigen
+
+```bash
+jobs
+# [1]+  Stopped    vim bericht.txt
+# [2]-  Running    ping google.com &
+```
+
+Die Zahl in eckigen Klammern ist die **Job-Nummer** – eine Shell-interne ID, unabhängig von der PID.
+
+### `bg` – angehaltenen Job im Hintergrund fortsetzen
+
+```bash
+bg          # letzten angehaltenen Job weiterlaufen lassen
+bg %1       # Job Nummer 1 im Hintergrund fortsetzen
+```
+
+### `fg` – Job in den Vordergrund holen
+
+```bash
+fg          # letzten Hintergrundjob in den Vordergrund
+fg %1       # Job Nummer 1 in den Vordergrund
+```
+
+### `&` – direkt im Hintergrund starten
+
+Ein `&` am Ende des Befehls startet ihn sofort im Hintergrund:
+
+```bash
+long-running-script.sh &
+# [1] 1042           ← Job-Nummer und PID
+
+ping -c 100 google.com &
+# [2] 1043
+```
+
+Die Shell ist sofort wieder verfügbar. Die Ausgabe des Hintergrundprozesses erscheint weiterhin im Terminal – was manchmal störend ist:
+
+```bash
+long-running-script.sh > ausgabe.log 2>&1 &
+# Ausgabe komplett in Datei umleiten
+```
+
+<Aside type="tip">
+Typischer Workflow: In `vim` arbeiten, mit `Strg`+`Z` kurz in die Shell wechseln, einen Befehl ausführen, dann mit `fg` zurück in `vim`. Kein neues Terminal-Fenster nötig.
+</Aside>
+
+## `nohup` – Prozess nach Shell-Ende weiterlaufen lassen
+
+Wenn die Shell beendet wird (z. B. SSH-Verbindung trennt), erhalten alle Hintergrundjobs **SIGHUP** und beenden sich. `nohup` (*No Hang Up*) schützt einen Prozess davor:
+
+```bash
+nohup ./backup-script.sh &
+# nohup: ignoring input and appending output to 'nohup.out'
+```
+
+Die Ausgabe landet automatisch in `nohup.out` (oder einer umgeleiteten Datei):
+
+```bash
+nohup ./backup-script.sh > backup.log 2>&1 &
+```
+
+<Aside type="note">
+Für dauerhaft laufende Prozesse (Dienste, Server) ist `nohup` nur ein Notbehelf – die saubere Lösung ist ein **systemd-Service**, der den Prozess auch nach Abstürzen neu startet und das Logging übernimmt. Das ist Thema der Administration.
+</Aside>
+
+## Überblick: Job-Steuerung
+
+```
+Befehl starten          ─────────────────────────► Vordergrund (Shell blockiert)
+                                                          │
+                                              Strg+Z      │ Strg+C
+                                                 │        ▼
+                                                 │   Prozess beendet
+                                                 ▼
+                                            Stopped (eingefroren)
+                                                 │
+                                          bg %n  │  fg %n
+                                                 ▼        ▼
+Befehl & starten  ──► Hintergrund (Running) ◄───┘   Vordergrund
+```

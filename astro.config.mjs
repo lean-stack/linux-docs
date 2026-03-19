@@ -57,6 +57,14 @@ export default defineConfig({
 							label: 'Suchen',
 							autogenerate: { directory: 'basics/suchen' },
 						},
+						{
+							label: 'Prozessverwaltung',
+							autogenerate: { directory: 'basics/prozesse' },
+						},
+						{
+							label: 'Bash-Scripting',
+							autogenerate: { directory: 'basics/scripting' },
+						},
 					],
 				},
 				{

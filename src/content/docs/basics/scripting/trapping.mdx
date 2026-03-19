@@ -1,0 +1,182 @@
+---
+title: Trapping & Praxisbeispiel
+sidebar:
+  order: 5
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Signal Trapping
+
+Mit `trap` lässt sich festlegen, was ein Skript tun soll, wenn es ein bestimmtes Signal empfängt – oder wenn es sich beendet. Das ist die Grundlage für saubere Fehlerbehandlung und Aufräumarbeiten.
+
+```bash
+trap 'befehl' SIGNAL [SIGNAL ...]
+```
+
+### Wichtige Ereignisse
+
+| Ereignis | Bedeutung |
+|---|---|
+| `EXIT` | Skript endet – egal ob normal, Fehler oder Signal |
+| `INT` | `Strg`+`C` (SIGINT) |
+| `TERM` | `kill`-Befehl (SIGTERM) |
+| `ERR` | Befehl gibt Exit-Code ≠ 0 zurück (mit `set -e` sinnvoll) |
+
+### Das Cleanup-Pattern
+
+Das häufigste Einsatzmuster: temporäre Dateien anlegen, am Ende sicher löschen – egal wie das Skript endet:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# Temporäre Datei anlegen
+TMP=$(mktemp)
+
+# Cleanup-Funktion: wird bei EXIT immer ausgeführt
+function aufräumen() {
+    rm -f "$TMP"
+    echo "Temporäre Dateien gelöscht." >&2
+}
+trap aufräumen EXIT
+
+# Ab hier: Skript-Logik
+echo "Verarbeite Daten in $TMP..."
+some-command > "$TMP"
+process "$TMP"
+```
+
+`mktemp` legt eine eindeutig benannte temporäre Datei an – sicherer als selbst gewählte Namen in `/tmp`.
+
+<Aside type="tip">
+`trap aufräumen EXIT` ist dem separaten Trapping von INT und TERM vorzuziehen: `EXIT` wird in **allen** Beendigungs-Situationen ausgelöst – normales Ende, Fehler durch `set -e`, `Strg`+`C`, `kill`. Eine einzige Trap-Zeile deckt alle Fälle ab.
+</Aside>
+
+### Mehrere Signale, Statusmeldung
+
+```bash
+function bei_abbruch() {
+    echo "" >&2
+    echo "Skript unterbrochen – räume auf..." >&2
+    rm -f "$TMP_DATEI"
+    exit 130    # Konvention: 128 + Signalnummer (SIGINT = 2)
+}
+
+trap bei_abbruch INT TERM
+```
+
+### Trap zurücksetzen
+
+```bash
+trap - EXIT    # EXIT-Trap entfernen (kein Cleanup mehr)
+trap '' INT    # INT ignorieren (Skript nicht mehr mit Strg+C abbrechbar)
+```
+
+---
+
+## Praxisbeispiel: Backup-Skript
+
+Das folgende Skript bringt alle Konzepte aus diesem Kapitel zusammen: Struktur, Variablen, Fehlerbehandlung, Funktionen, Schleifen, Trapping.
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# ─── Konfiguration ────────────────────────────────────────
+readonly SKRIPT=$(basename "$0")
+readonly QUELLE="${1:-}"
+readonly ZIEL="${2:-}"
+readonly DATUM=$(date +%Y-%m-%d_%H-%M)
+readonly LOGFILE="/var/log/backup-${DATUM}.log"
+TMP_LISTE=$(mktemp)
+
+# ─── Hilfsfunktionen ──────────────────────────────────────
+function log()    { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOGFILE"; }
+function fehler() { echo "[FEHLER] $*" >&2; exit 1; }
+
+function nutzung() {
+    echo "Verwendung: $SKRIPT <quelle> <ziel>"
+    echo "Beispiel:   $SKRIPT /home /backup"
+    exit 1
+}
+
+function aufräumen() {
+    rm -f "$TMP_LISTE"
+    log "Skript beendet."
+}
+trap aufräumen EXIT
+
+function bei_abbruch() {
+    echo "" >&2
+    log "Skript durch Benutzer abgebrochen."
+    exit 130
+}
+trap bei_abbruch INT TERM
+
+# ─── Validierung ──────────────────────────────────────────
+function argumente_prüfen() {
+    [[ -n "$QUELLE" && -n "$ZIEL" ]] || nutzung
+    [[ -d "$QUELLE" ]]  || fehler "Quellverzeichnis existiert nicht: $QUELLE"
+    [[ -d "$ZIEL" ]]    || fehler "Zielverzeichnis existiert nicht: $ZIEL"
+}
+
+# ─── Backup-Logik ─────────────────────────────────────────
+function dateien_ermitteln() {
+    log "Ermittle zu sichernde Dateien..."
+    find "$QUELLE" -type f -newer "${ZIEL}/letztes-backup" \
+        2>/dev/null > "$TMP_LISTE" || true
+    local ANZAHL
+    ANZAHL=$(wc -l < "$TMP_LISTE")
+    log "$ANZAHL Datei(en) gefunden."
+}
+
+function backup_erstellen() {
+    local ARCHIV="${ZIEL}/backup-${DATUM}.tar.gz"
+    log "Erstelle Archiv: $ARCHIV"
+
+    if [[ ! -s "$TMP_LISTE" ]]; then
+        log "Keine neuen Dateien – kein Backup nötig."
+        return 0
+    fi
+
+    tar -czf "$ARCHIV" --files-from="$TMP_LISTE"
+    local GRÖSSE
+    GRÖSSE=$(du -sh "$ARCHIV" | cut -f1)
+    log "Archiv erstellt: $ARCHIV ($GRÖSSE)"
+}
+
+function alte_backups_löschen() {
+    local MAX_TAGE=30
+    log "Lösche Backups älter als $MAX_TAGE Tage..."
+    find "$ZIEL" -name "backup-*.tar.gz" -mtime "+${MAX_TAGE}" \
+        -exec rm -v {} \; 2>&1 | tee -a "$LOGFILE" || true
+    touch "${ZIEL}/letztes-backup"
+}
+
+# ─── Hauptprogramm ────────────────────────────────────────
+log "=== Backup gestartet ==="
+log "Quelle: $QUELLE → Ziel: $ZIEL"
+
+argumente_prüfen
+dateien_ermitteln
+backup_erstellen
+alte_backups_löschen
+
+log "=== Backup abgeschlossen ==="
+```
+
+### Was das Skript demonstriert
+
+| Konzept | Wo im Skript |
+|---|---|
+| Shebang + `set -euo pipefail` | Zeile 1–2 |
+| `readonly`-Konstanten | Konfigurationsblock |
+| `mktemp` + `trap EXIT` | Temporäre Datei + Cleanup |
+| `trap INT TERM` | Sauberer Abbruch durch Benutzer |
+| Hilfsfunktionen mit `log`/`fehler` | stdout vs. stderr |
+| Argumentprüfung mit `:?` und `[[ ]]` | `argumente_prüfen()` |
+| Kommando-Substitution | `$(date ...)`, `$(wc -l ...)` |
+| `find` mit `2>/dev/null` | `dateien_ermitteln()` |
+| `[[ -s ... ]]` – Datei nicht leer | `backup_erstellen()` |
+| `|| true` – erwartete Fehler ignorieren | mehrere Stellen |

@@ -1,0 +1,137 @@
+---
+title: Variablen
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Zuweisung und Verwendung
+
+```bash
+NAME="Linux"          # Zuweisung – kein Leerzeichen um das =!
+echo "$NAME"          # Verwendung – immer in Anführungszeichen
+echo "Hallo $NAME"    # in Strings einbetten
+```
+
+<Aside type="caution">
+Leerzeichen um `=` sind ein Syntaxfehler: `NAME = "Linux"` versucht, ein Programm namens `NAME` mit den Argumenten `=` und `Linux` aufzurufen.
+</Aside>
+
+Variablen sind immer Strings – Bash kennt keinen Typ. Zahlen werden als Strings gespeichert und nur in arithmetischen Ausdrücken als Zahlen behandelt.
+
+## Spezialvariablen
+
+### Positionsparameter – Argumente des Skripts
+
+```bash
+#!/bin/bash
+echo "Skriptname:       $0"
+echo "Erstes Argument:  $1"
+echo "Zweites Argument: $2"
+echo "Alle Argumente:   $@"
+echo "Anzahl Argumente: $#"
+```
+
+```bash
+./skript.sh hallo welt
+# Skriptname:       ./skript.sh
+# Erstes Argument:  hallo
+# Zweites Argument: welt
+# Alle Argumente:   hallo welt
+# Anzahl Argumente: 2
+```
+
+| Variable | Bedeutung |
+|---|---|
+| `$0` | Name des Skripts |
+| `$1` … `$9` | Positionsparameter 1–9 |
+| `${10}` … | Positionsparameter ab 10 (Klammern nötig!) |
+| `$@` | Alle Parameter als separate Wörter |
+| `$*` | Alle Parameter als ein Wort |
+| `$#` | Anzahl der Parameter |
+
+<Aside type="tip">
+`$@` in Anführungszeichen (`"$@"`) ist fast immer die richtige Wahl, wenn alle Argumente an einen anderen Befehl weitergegeben werden sollen – jedes Argument bleibt dabei ein eigenständiges Wort, auch wenn es Leerzeichen enthält.
+</Aside>
+
+### Prozess- und Statusvariablen
+
+| Variable | Bedeutung |
+|---|---|
+| `$?` | Exit-Code des letzten Befehls (0 = Erfolg) |
+| `$$` | PID des aktuellen Skripts |
+| `$!` | PID des zuletzt in den Hintergrund geschickten Prozesses |
+| `$-` | Aktive Shell-Optionen |
+
+```bash
+cp quelle.txt ziel.txt
+echo "Exit-Code: $?"    # 0 bei Erfolg, 1 bei Fehler
+
+sleep 10 &
+echo "PID des sleep: $!"
+```
+
+## Parameter-Expansion
+
+Bash bietet mächtige Möglichkeiten, Variablen beim Einsetzen zu transformieren:
+
+### Standardwerte
+
+```bash
+echo "${NAME:-Unbekannt}"      # Wert von NAME, oder "Unbekannt" wenn leer/undefiniert
+echo "${NAME:=Standard}"       # wie :- , aber weist Standard auch zu wenn leer
+echo "${NAME:+Vorhanden}"      # "Vorhanden" wenn NAME gesetzt, sonst leer
+echo "${1:?'Argument fehlt!'}" # Fehlermeldung und Abbruch wenn $1 leer/undefiniert
+```
+
+```bash
+#!/bin/bash
+set -euo pipefail
+ZIEL="${1:?'Bitte Zielverzeichnis angeben!'}"
+# → Skript bricht mit Fehlermeldung ab wenn $1 fehlt
+```
+
+### String-Operationen
+
+```bash
+DATEI="/home/alice/dokumente/bericht.txt"
+
+echo "${#DATEI}"               # Länge: 38
+echo "${DATEI##*/}"            # Dateiname:  bericht.txt  (längster Präfix bis /)
+echo "${DATEI%/*}"             # Verzeichnis: /home/alice/dokumente  (kürzestes Suffix ab /)
+echo "${DATEI%.txt}"           # ohne Endung: /home/alice/dokumente/bericht
+echo "${DATEI/alice/bob}"      # ersetzen: /home/bob/dokumente/bericht.txt
+echo "${DATEI^^}"              # Großbuchstaben (bash 4+)
+echo "${DATEI,,}"              # Kleinbuchstaben (bash 4+)
+```
+
+<Aside type="note">
+`${DATEI##*/}` entspricht dem Befehl `basename "$DATEI"`, `${DATEI%/*}` entspricht `dirname "$DATEI"` – nur ohne externen Prozess.
+</Aside>
+
+## Benutzereingabe: `read`
+
+```bash
+read -p "Name eingeben: " NAME
+echo "Hallo, $NAME!"
+
+read -sp "Passwort: " PASSWORT    # -s: kein Echo (für Passwörter)
+echo ""                           # Zeilenumbruch nach verdeckter Eingabe
+
+read -t 10 -p "Eingabe (10s): " ANTWORT || echo "Timeout!"
+```
+
+`read` ohne Variablenname speichert die Eingabe in `$REPLY`.
+
+## Kommando-Substitution
+
+Wie im [Shell-Substitutionen](../shell/substitutionen)-Artikel gezeigt, lässt sich die Ausgabe eines Befehls direkt in eine Variable schreiben:
+
+```bash
+DATUM=$(date +%Y-%m-%d)
+BENUTZER=$(whoami)
+ZEILENANZAHL=$(wc -l < datei.txt)
+
+echo "Backup vom $DATUM, erstellt von $BENUTZER"
+```

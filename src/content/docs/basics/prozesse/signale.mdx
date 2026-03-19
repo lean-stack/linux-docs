@@ -1,0 +1,122 @@
+---
+title: Signale
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Signale** sind asynchrone Benachrichtigungen, die das Betriebssystem oder andere Prozesse an einen Prozess schicken. Der Prozess kann sie empfangen, behandeln – oder in den meisten Fällen ignorieren bzw. auf sie reagieren.
+
+Signale sind die Grundlage vieler bekannter Aktionen: `Strg`+`C` schickt SIGINT, `Strg`+`Z` schickt SIGSTOP, und `kill` schickt beliebige Signale an beliebige Prozesse.
+
+## Wichtige Signale
+
+| Nr. | Name | Auslöser | Standardverhalten |
+|---|---|---|---|
+| 1 | **SIGHUP** | Terminal geschlossen, SSH getrennt | Beenden (oder Konfiguration neu laden) |
+| 2 | **SIGINT** | `Strg`+`C` | Beenden |
+| 9 | **SIGKILL** | `kill -9` | Sofort beenden – **nicht abfangbar** |
+| 15 | **SIGTERM** | `kill` (Standard) | Sauber beenden |
+| 18 | **SIGCONT** | `bg`, `fg` | Gestoppten Prozess fortsetzen |
+| 19 | **SIGSTOP** | `Strg`+`Z` | Anhalten – **nicht abfangbar** |
+| 20 | **SIGTSTP** | `Strg`+`Z` (Terminal) | Anhalten (abfangbar) |
+
+<Aside type="note">
+SIGKILL (9) und SIGSTOP (19) sind die einzigen Signale, die ein Prozess **nicht** abfangen, blockieren oder ignorieren kann. Sie werden direkt vom Kernel ausgeführt.
+</Aside>
+
+## `kill` – Signal an einen Prozess senden
+
+Der Name ist irreführend: `kill` schickt nicht nur SIGTERM, sondern beliebige Signale. Das Ziel wird per PID angegeben:
+
+```bash
+kill 1034           # SIGTERM (15) – sauber beenden
+kill -15 1034       # identisch: SIGTERM explizit
+kill -TERM 1034     # identisch: Signal per Name
+kill -9 1034        # SIGKILL – sofort beenden, kein Aufräumen
+kill -HUP 1034      # SIGHUP – Konfiguration neu laden (bei vielen Diensten)
+```
+
+Alle verfügbaren Signale:
+
+```bash
+kill -l             # Liste aller Signale mit Nummern
+```
+
+### SIGTERM vs. SIGKILL
+
+```
+SIGTERM (15):   Prozess ──► Signal empfangen ──► Aufräumen ──► Beendet
+                                                  (Dateien schließen,
+                                                   Verbindungen trennen)
+
+SIGKILL (9):    Prozess ──► Kernel beendet Prozess sofort
+                             (kein Aufräumen möglich)
+```
+
+<Aside type="caution">
+`kill -9` ist der letzte Ausweg. Datenbanken, Editoren oder Netzwerkdienste können bei SIGKILL Daten verlieren oder inkonsistente Zustände hinterlassen. Erst SIGTERM versuchen, ein paar Sekunden warten, dann erst SIGKILL.
+
+```bash
+kill 1034         # erst sanft
+sleep 5
+kill -9 1034      # dann hart, falls nötig
+```
+</Aside>
+
+## `killall` und `pkill` – nach Name beenden
+
+Statt mit der PID kann nach dem Prozessnamen adressiert werden:
+
+```bash
+killall nginx           # alle Prozesse namens "nginx" beenden (SIGTERM)
+killall -9 nginx        # alle sofort beenden (SIGKILL)
+killall -HUP sshd       # sshd neu laden
+
+pkill firefox           # Prozesse deren Name "firefox" enthält
+pkill -u alice          # alle Prozesse von Benutzer alice
+pkill -9 -u alice       # alle Prozesse von alice sofort beenden
+```
+
+| Befehl | Unterschied |
+|---|---|
+| `killall name` | Exakter Namensvergleich |
+| `pkill muster` | Muster-Match (wie `pgrep`) |
+
+## Zombie-Prozesse
+
+Ein **Zombie** ist ein Prozess, der bereits beendet ist, aber noch in der Prozesstabelle steht – weil sein Elternprozess den Exit-Code noch nicht abgeholt hat.
+
+```bash
+ps aux | grep "Z"       # Zombies erkennen (Zustand Z)
+```
+
+Ein Zombie verbraucht keinen Speicher und keine CPU – nur einen Eintrag in der Prozesstabelle. In der Regel ist das harmlos.
+
+**Wie entstehen Zombies?**
+
+```
+Kindprozess beendet sich
+        │
+        ▼
+Kernel behält Eintrag (Exit-Code)
+        │
+        ▼ Elternprozess ruft wait() auf
+Eintrag wird entfernt ──► kein Zombie
+
+        │ Elternprozess ruft wait() NICHT auf
+        ▼
+Zombie verbleibt in der Prozesstabelle
+```
+
+**Was tun bei Zombies?**
+
+Ein Zombie selbst lässt sich nicht mit `kill` entfernen – er ist bereits tot. Die Lösung ist, den **Elternprozess** zu benachrichtigen:
+
+```bash
+# SIGCHLD an den Elternprozess schicken – fordert ihn auf, wait() aufzurufen
+kill -CHLD <PPID>
+```
+
+Wenn das nicht hilft, muss der Elternprozess neu gestartet werden. Ist PID 1 (systemd) der Elternprozess, räumt es Zombies automatisch auf.

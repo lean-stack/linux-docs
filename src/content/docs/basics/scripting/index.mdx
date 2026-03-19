@@ -1,0 +1,119 @@
+---
+title: Bash-Scripting
+sidebar:
+  order: 1
+  label: Aufbau
+---
+
+import { Aside, FileTree } from '@astrojs/starlight/components';
+
+Ein Shell-Skript ist eine Textdatei mit Bash-Befehlen, die sequenziell ausgeführt werden. Alles, was man interaktiv in der Shell tippt, lässt sich in ein Skript schreiben – und damit wiederholen, automatisieren und weitergeben.
+
+## Die Shebang-Zeile
+
+Die erste Zeile jedes Bash-Skripts ist die **Shebang** (`#!`) – sie teilt dem Kernel mit, welcher Interpreter die Datei ausführen soll:
+
+```bash
+#!/bin/bash
+```
+
+Alternativ die portablere Form, die `bash` im `$PATH` sucht:
+
+```bash
+#!/usr/bin/env bash
+```
+
+<Aside type="note">
+Ohne Shebang führt das System das Skript mit `/bin/sh` aus – der minimalen POSIX-Shell, die auf manchen Systemen nicht `bash` ist. Bash-spezifische Syntax (Arrays, `[[...]]`, `$((...))`) würde dann zu Fehlern führen. Shebang immer angeben.
+</Aside>
+
+## Skript ausführbar machen
+
+```bash
+chmod +x skript.sh    # ausführbar machen
+./skript.sh           # ausführen (führendes ./ nötig, da . oft nicht in $PATH)
+
+bash skript.sh        # alternativ: direkt mit bash aufrufen (ohne chmod)
+```
+
+## Sicherheitsnetz: `set`-Optionen
+
+Standardmäßig läuft Bash sehr permissiv: Fehler werden ignoriert, undefinierte Variablen ergeben einen leeren String. Für robuste Skripte empfiehlt sich dieser Block direkt nach der Shebang:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+```
+
+| Option | Bedeutung |
+|---|---|
+| `-e` | Bei Fehler (Exit-Code ≠ 0) sofort abbrechen |
+| `-u` | Undefinierte Variablen als Fehler behandeln |
+| `-o pipefail` | Fehler in Pipes nicht verschlucken |
+
+```bash
+# Ohne set -e:
+cp wichtig.txt /backup/    # schlägt fehl (kein Platz)
+rm wichtig.txt             # wird trotzdem ausgeführt – Datei weg!
+
+# Mit set -e:
+cp wichtig.txt /backup/    # schlägt fehl
+# → Skript bricht hier ab, rm wird nie erreicht
+```
+
+<Aside type="caution">
+`set -e` kann bei manchen Konstrukten überraschend abbrechen – z. B. bei `grep`, das 1 zurückgibt wenn nichts gefunden wurde. In solchen Fällen hilft `|| true` um einen erwarteten Nicht-Null-Exit-Code zu akzeptieren:
+
+```bash
+grep "muster" datei.txt || true    # kein Abbruch wenn nichts gefunden
+```
+</Aside>
+
+## Skript-Struktur
+
+Ein gut strukturiertes Skript folgt diesem Muster:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# ─── Beschreibung ─────────────────────────────────────────
+# Zweck:   Tagesaktuelles Backup von /home erstellen
+# Aufruf:  ./backup.sh [zielverzeichnis]
+# Autor:   alice, 2026-03
+# ──────────────────────────────────────────────────────────
+
+# Konstanten
+readonly QUELLE="/home"
+readonly ZIEL="${1:-/backup}"        # erstes Argument oder Standardwert
+readonly DATUM=$(date +%Y-%m-%d)
+readonly ARCHIV="${ZIEL}/home-${DATUM}.tar.gz"
+
+# Funktionen
+function aufraeumen() { ... }
+function backup_erstellen() { ... }
+
+# Hauptprogramm
+backup_erstellen
+```
+
+<Aside type="tip">
+`readonly` schützt Konstanten vor versehentlicher Überschreibung im Skript. Eine gute Gewohnheit für alle Werte, die sich während der Laufzeit nicht ändern sollen.
+</Aside>
+
+## Kommentare und Debugging
+
+```bash
+# Einzeiliger Kommentar
+
+set -x    # Debugging einschalten: jede Zeile wird vor Ausführung ausgegeben
+set +x    # Debugging ausschalten
+```
+
+Debugging für einen einzelnen Abschnitt:
+
+```bash
+set -x
+cp "$QUELLE" "$ZIEL"
+set +x
+```

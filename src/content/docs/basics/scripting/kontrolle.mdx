@@ -1,0 +1,189 @@
+---
+title: Kontrollstrukturen
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Bedingte Ausführung
+
+### `if` / `elif` / `else`
+
+```bash
+if bedingung; then
+    # ...
+elif andere-bedingung; then
+    # ...
+else
+    # ...
+fi
+```
+
+Als Bedingung dient ein beliebiger Befehl – sein **Exit-Code** entscheidet: 0 = wahr, alles andere = falsch.
+
+```bash
+if grep -q "root" /etc/passwd; then
+    echo "root-Eintrag gefunden"
+fi
+
+if cp quelle.txt ziel/; then
+    echo "Kopieren erfolgreich"
+else
+    echo "Fehler beim Kopieren" >&2
+fi
+```
+
+### `[[...]]` – Bedingungsausdrücke
+
+`[[...]]` ist die bash-eigene Syntax für Tests – sicherer und mächtiger als das ältere `[...]`:
+
+```bash
+# Dateisystem
+if [[ -f "$DATEI" ]]; then echo "Datei existiert"; fi
+if [[ -d "$VERZ" ]]; then echo "Verzeichnis existiert"; fi
+if [[ -e "$PFAD" ]]; then echo "Pfad existiert (Datei oder Verz.)"; fi
+if [[ -r "$DATEI" ]]; then echo "Datei ist lesbar"; fi
+if [[ -x "$DATEI" ]]; then echo "Datei ist ausführbar"; fi
+if [[ -s "$DATEI" ]]; then echo "Datei ist nicht leer"; fi
+
+# Strings
+if [[ -z "$VAR" ]]; then echo "leer"; fi           # zero length
+if [[ -n "$VAR" ]]; then echo "nicht leer"; fi      # non-zero length
+if [[ "$A" == "$B" ]]; then echo "gleich"; fi
+if [[ "$A" != "$B" ]]; then echo "ungleich"; fi
+if [[ "$A" =~ ^[0-9]+$ ]]; then echo "nur Ziffern"; fi  # Regex-Match
+
+# Zahlen
+if [[ "$A" -eq "$B" ]]; then echo "gleich"; fi      # equal
+if [[ "$A" -ne "$B" ]]; then echo "ungleich"; fi    # not equal
+if [[ "$A" -lt "$B" ]]; then echo "kleiner"; fi     # less than
+if [[ "$A" -gt "$B" ]]; then echo "größer"; fi      # greater than
+```
+
+Verknüpfungen:
+
+```bash
+if [[ -f "$DATEI" && -r "$DATEI" ]]; then
+    echo "Datei existiert und ist lesbar"
+fi
+
+if [[ -z "$1" || "$1" == "--help" ]]; then
+    echo "Hilfe..."
+fi
+```
+
+<Aside type="note">
+`[[ ]]` ist bash-spezifisch, `[ ]` ist POSIX-kompatibel. In bash-Skripten (mit `#!/bin/bash`) fast immer `[[ ]]` bevorzugen: kein Word-Splitting, kein Globbing, `&&`/`||` statt `-a`/`-o`, und Regex-Support mit `=~`.
+</Aside>
+
+### `case` – Mehrfachauswahl
+
+Übersichtlicher als verschachtelte `if`-Ketten bei vielen Möglichkeiten:
+
+```bash
+case "$1" in
+    start)
+        echo "Dienst wird gestartet..."
+        ;;
+    stop|halt)                    # mehrere Muster mit |
+        echo "Dienst wird gestoppt..."
+        ;;
+    restart)
+        echo "Neustart..."
+        ;;
+    --help|-h)
+        echo "Verwendung: $0 {start|stop|restart}"
+        ;;
+    *)                            # Standardfall (wie else)
+        echo "Unbekannte Option: $1" >&2
+        exit 1
+        ;;
+esac
+```
+
+### Kurzschlussoperatoren `&&` und `||`
+
+```bash
+mkdir -p "$ZIEL" && cp "$QUELLE" "$ZIEL"   # cp nur wenn mkdir erfolgreich
+ping -c1 host.de || echo "Host nicht erreichbar"
+
+# Häufiges Muster für Fehlerbehandlung:
+[[ -f "$DATEI" ]] || { echo "Datei fehlt: $DATEI" >&2; exit 1; }
+```
+
+## Schleifen
+
+### `for` – über eine Liste iterieren
+
+```bash
+# Liste von Werten
+for FARBE in rot grün blau; do
+    echo "$FARBE"
+done
+
+# Dateien mit Glob
+for DATEI in /var/log/*.log; do
+    echo "Verarbeite: $DATEI"
+done
+
+# Positionsparameter
+for ARG in "$@"; do
+    echo "Argument: $ARG"
+done
+
+# Zahlenbereich
+for I in {1..10}; do
+    echo "Schritt $I"
+done
+
+# C-Stil
+for (( I=0; I<10; I++ )); do
+    echo "$I"
+done
+```
+
+### `while` – solange Bedingung wahr
+
+```bash
+ZÄHLER=0
+while [[ "$ZÄHLER" -lt 5 ]]; do
+    echo "Zähler: $ZÄHLER"
+    (( ZÄHLER++ ))
+done
+
+# Datei zeilenweise einlesen
+while IFS= read -r ZEILE; do
+    echo "Zeile: $ZEILE"
+done < datei.txt
+
+# Auf Ereignis warten
+while ! ping -c1 server.de &>/dev/null; do
+    echo "Warte auf server.de..."
+    sleep 5
+done
+echo "Server erreichbar!"
+```
+
+<Aside type="tip">
+`while IFS= read -r ZEILE` ist das korrekte Muster zum zeilenweisen Einlesen: `IFS=` verhindert, dass führende/nachfolgende Leerzeichen abgeschnitten werden; `-r` verhindert, dass Backslashes interpretiert werden.
+</Aside>
+
+### `break` und `continue`
+
+```bash
+for DATEI in /tmp/*.tmp; do
+    [[ ! -f "$DATEI" ]] && continue         # Nächste Iteration, falls kein Treffer
+    [[ $(wc -c < "$DATEI") -eq 0 ]] && continue   # Leere Dateien überspringen
+    echo "Lösche: $DATEI"
+    rm "$DATEI"
+done
+
+# Schleife nach erstem Treffer verlassen
+for HOST in server1 server2 server3; do
+    if ping -c1 "$HOST" &>/dev/null; then
+        echo "Erster erreichbarer Host: $HOST"
+        break
+    fi
+done
+```
