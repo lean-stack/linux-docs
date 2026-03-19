@@ -1,6 +1,14 @@
 # Changelog
 
 
+## v0.3.0
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v0.2.1...v0.3.0)
+
+### 🚀 Enhancements
+
+- Add pages for process management and scripting intro ([d8696a8](https://github.com/lean-stack/linux-docs/commit/d8696a8))
+
 ## v0.2.1
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v0.2.0...v0.2.1)
