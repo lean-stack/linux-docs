@@ -1,0 +1,374 @@
+---
+title: Pakete abfragen
+sidebar:
+  order: 3
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Die Paketverwaltung kann weit mehr als nur installieren und entfernen. Mit gezielten
+Abfragen lassen sich Fragen beantworten wie: *Welchem Paket gehört diese Datei?
+Was braucht dieses Paket? Welche Pakete hängen davon ab?*
+
+## Dateityp identifizieren
+
+Bevor man ein Paket sucht, lohnt ein Blick auf den Befehl selbst: Ist er kompiliert
+oder ein Shell-Skript? Das `file`-Kommando verrät es:
+
+```bash
+which mtr
+# /usr/sbin/mtr
+
+file /usr/sbin/mtr
+# /usr/sbin/mtr: ELF 64-bit LSB shared object, x86-64, dynamically linked ...
+
+file /usr/sbin/ifcfg
+# /usr/sbin/ifcfg: POSIX shell script, ASCII text executable
+```
+
+Ein **dynamisch gelinkes Binary** (`dynamically linked`) hat Abhängigkeiten zu Bibliotheken
+— es lässt sich nicht einfach auf ein anderes System kopieren. Ein **Shell-Skript**
+hingegen ist oft portierbar, solange die verwendeten Befehle vorhanden sind.
+
+<Aside type="tip">
+`which befehl` findet den vollständigen Pfad eines Befehls im `$PATH` — wichtig, weil
+`rpm -qf befehl` (ohne Pfad) scheitert: rpm sucht nach einer Datei namens `befehl` im
+aktuellen Verzeichnis, nicht im PATH.
+
+```bash
+# Falsch — sucht /root/nslookup:
+rpm -qf nslookup
+
+# Richtig:
+rpm -qf $(which nslookup)
+# bind-utils-9.11.13-6.el8.x86_64
+```
+</Aside>
+
+## Welchem Paket gehört eine Datei?
+
+Der häufigste Anwendungsfall: eine Datei oder ein Befehl ist vorhanden — aber woher kommt sie?
+
+<Tabs>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    rpm -qf /usr/bin/find
+    # findutils-4.8.0-5.el9.x86_64
+
+    rpm -qf /etc/ssh/sshd_config
+    # openssh-server-8.7p1-34.el9.x86_64
+    ```
+
+    Für Dateien, die **noch nicht installiert** sind (Suche im Repository):
+    ```bash
+    dnf provides /usr/bin/find
+    dnf provides "*/sshd_config"    # Glob möglich
+    ```
+  </TabItem>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    dpkg -S /usr/bin/find
+    # findutils: /usr/bin/find
+
+    dpkg -S /etc/ssh/sshd_config
+    # openssh-server: /etc/ssh/sshd_config
+    ```
+
+    Für noch nicht installierte Pakete (benötigt `apt-file`):
+    ```bash
+    sudo apt install apt-file
+    sudo apt-file update
+    apt-file search /usr/bin/find
+    apt-file search sshd_config
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    ```bash
+    rpm -qf /usr/bin/find          # installierte Pakete (rpm-Backend)
+
+    zypper search --provides /usr/bin/find
+    zypper what-provides /usr/bin/find
+    ```
+  </TabItem>
+</Tabs>
+
+## Dateien eines Pakets auflisten
+
+Welche Dateien installiert ein bestimmtes Paket auf dem System?
+
+<Tabs>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    rpm -ql nginx              # installiertes Paket
+    rpm -ql nginx | grep bin   # nur ausführbare Dateien
+
+    # Noch nicht installiertes Paket aus dem Repository:
+    dnf repoquery -l nginx
+    ```
+  </TabItem>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    dpkg -L nginx              # installiertes Paket
+    dpkg -L nginx | grep bin
+
+    # Noch nicht installiertes Paket:
+    apt-file list nginx
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    ```bash
+    rpm -ql nginx              # installiertes Paket
+    zypper info --file-list nginx
+    ```
+  </TabItem>
+</Tabs>
+
+## Paket-Metadaten anzeigen
+
+Version, Beschreibung, Größe, Installationsdatum — all das steckt in den Paket-Metadaten:
+
+<Tabs>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    rpm -qi nginx
+    # Name        : nginx
+    # Version     : 1.24.0
+    # Release     : 3.el9
+    # Architecture: x86_64
+    # Install Date: ...
+    # Size        : 1234567
+    # Summary     : A high performance web server ...
+
+    dnf info nginx            # ähnlich, aber auch für nicht installierte Pakete
+    ```
+
+    Changelog eines Pakets anzeigen:
+    ```bash
+    rpm -q --changelog nginx | head -30
+    dnf repoquery --changelog nginx
+    ```
+  </TabItem>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    apt show nginx
+    dpkg-query -s nginx       # nur für installierte Pakete
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    ```bash
+    zypper info nginx
+    rpm -qi nginx
+    ```
+  </TabItem>
+</Tabs>
+
+## Abhängigkeiten
+
+### Was braucht ein Paket?
+
+<Tabs>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    rpm -q --requires nginx
+    dnf repoquery --requires nginx
+    dnf repoquery --requires --resolve nginx   # aufgelöst als Paketnamen
+    ```
+  </TabItem>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    apt-cache depends nginx
+    dpkg-query -s nginx | grep Depends
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    ```bash
+    zypper info --requires nginx
+    rpm -q --requires nginx
+    ```
+  </TabItem>
+</Tabs>
+
+### Welche Pakete hängen von einem Paket ab?
+
+Nützlich, bevor ein Paket entfernt wird — oder um zu verstehen, warum es nicht entfernt werden kann:
+
+<Tabs>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    rpm -q --whatrequires openssl-libs
+    dnf repoquery --whatrequires openssl-libs
+    ```
+  </TabItem>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    apt-cache rdepends libssl3
+    apt-cache rdepends --installed libssl3   # nur installierte
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    ```bash
+    zypper search --requires openssl
+    rpm -q --whatrequires libopenssl1_1
+    ```
+  </TabItem>
+</Tabs>
+
+## Installationsverlauf
+
+### Zuletzt installierte Pakete
+
+<Tabs>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    rpm -qa --last             # alle Pakete, neueste zuerst
+    rpm -qa --last | head -20  # die letzten 20
+
+    dnf history                # dnf-Transaktionen
+    dnf history info 5         # Details zu Transaktion #5
+    dnf history undo 5         # Transaktion rückgängig machen
+    ```
+  </TabItem>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    grep " install " /var/log/dpkg.log | tail -20
+    grep " install " /var/log/dpkg.log.1 >> /tmp/install.log  # ältere Logs
+
+    cat /var/log/apt/history.log | tail -50
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    ```bash
+    rpm -qa --last | head -20
+    zypper history
+    ```
+  </TabItem>
+</Tabs>
+
+## Paket-Integrität prüfen
+
+Hat sich eine Datei eines installierten Pakets verändert? Nützlich bei Verdacht auf
+Manipulation oder fehlerhafte Konfiguration:
+
+<Tabs>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    rpm -V nginx               # Paket prüfen
+    rpm -Va                    # alle Pakete prüfen (dauert lange)
+    ```
+
+    Ausgabe-Codes:
+    ```
+    S  — Dateigröße verändert
+    M  — Dateirechte verändert
+    5  — MD5-Prüfsumme abweichend
+    T  — Zeitstempel verändert
+    c  — Konfigurationsdatei (Abweichungen sind normal)
+    ```
+
+    Ein leere Ausgabe bedeutet: alles in Ordnung.
+  </TabItem>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    sudo debsums nginx         # benötigt: apt install debsums
+    sudo debsums -s nginx      # nur Fehler anzeigen
+    sudo debsums -a            # alle Pakete
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    ```bash
+    rpm -V nginx
+    zypper verify nginx
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="tip">
+Konfigurationsdateien (z. B. `/etc/nginx/nginx.conf`) werden bei `rpm -V` mit `c` markiert
+und sind typischerweise verändert — das ist beabsichtigt. Beunruhigend sind Abweichungen
+bei Programmdateien in `/usr/bin` oder `/usr/sbin`.
+</Aside>
+
+## Skripte in einem Paket
+
+RPM-Pakete können Shell-Skripte enthalten, die bei Installation oder Deinstallation
+ausgeführt werden (`%pre`, `%post`, `%preun`, `%postun`):
+
+```bash
+rpm -q --scripts nginx
+```
+
+<Aside type="note">
+Dies ist vor allem bei der Fehlersuche nützlich: Wenn eine Installation hängt oder
+ein Dienst nach der Installation nicht startet, lohnt es sich, die Post-Install-Skripte
+zu prüfen. Ein direktes Äquivalent für apt gibt es nicht — Debian-Pakete verwenden
+`preinst`, `postinst`, `prerm`, `postrm`-Dateien, die in `/var/lib/dpkg/info/` liegen.
+</Aside>
+
+## Aus welchem Repository stammt ein Paket?
+
+Ein Kollege nutzt ein Tool, das im Standard-Repository nicht verfügbar ist. Woher hat er es?
+
+<Tabs>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    dnf list hwinfo
+    # Installed Packages
+    # hwinfo.x86_64    21.47-9.el8    @epel
+
+    # Das @ vor dem Repository-Namen zeigt die Quelle
+    # Alle installierten Pakete mit ihrer Quelle:
+    dnf list installed | grep @epel
+    ```
+
+    Repository-Konfiguration anzeigen:
+    ```bash
+    dnf repolist                    # aktive Repositories
+    dnf repolist --all              # alle (auch deaktivierte)
+    dnf repoinfo epel               # Details zu einem Repository
+    ```
+  </TabItem>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    # Aus welchem Repository/Pocket stammt ein Paket?
+    apt-cache policy nginx
+    # nginx:
+    #   Installed: 1.24.0-1
+    #   Candidate: 1.24.0-1
+    #   Version table:
+    #  *** 1.24.0-1 500
+    #         500 http://deb.debian.org/debian bookworm/main amd64
+    ```
+
+    Repository-Liste anzeigen:
+    ```bash
+    apt-cache policy             # alle konfigurierten Repos mit Prioritäten
+    grep -r "^deb " /etc/apt/sources.list /etc/apt/sources.list.d/
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    ```bash
+    zypper info hwinfo           # zeigt "Repository" in der Ausgabe
+
+    zypper repos                 # alle konfigurierten Repositories
+    zypper repos --details       # mit URLs und Prioritäten
+    ```
+  </TabItem>
+</Tabs>
+
+## Alle installierten Pakete auflisten und filtern
+
+```bash
+# RHEL/Fedora
+dnf list installed
+dnf list installed | grep nginx
+rpm -qa | sort | less
+
+# Debian/Ubuntu
+apt list --installed
+dpkg -l | grep nginx
+dpkg -l | grep "^ii"          # nur vollständig installierte
+
+# openSUSE
+zypper search --installed-only
+rpm -qa | sort
+```

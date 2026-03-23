@@ -14,14 +14,38 @@ Die wichtigsten Paketverwaltungssysteme:
 
 | Distribution | Format | Tool |
 |---|---|---|
-| Debian, Ubuntu | `.deb` | `apt`, `dpkg` |
 | RHEL, Fedora, CentOS | `.rpm` | `dnf` (früher `yum`) |
+| Debian, Ubuntu | `.deb` | `apt`, `dpkg` |
 | openSUSE | `.rpm` | `zypper` |
 | Arch Linux | `.pkg.tar.zst` | `pacman` |
 
 ## Grundlegende Workflows
 
 <Tabs>
+  <TabItem label="RHEL/Fedora (dnf)">
+    ```bash
+    # Paketliste aktualisieren
+    dnf makecache
+
+    # Alle installierten Pakete aktualisieren
+    dnf update
+
+    # Paket suchen
+    dnf search nginx
+
+    # Paket installieren
+    dnf install nginx
+
+    # Paket entfernen
+    dnf remove nginx
+
+    # Nicht mehr benötigte Pakete entfernen
+    dnf autoremove
+
+    # Informationen zu einem Paket anzeigen
+    dnf info nginx
+    ```
+  </TabItem>
   <TabItem label="Debian/Ubuntu (apt)">
     ```bash
     # Paketliste aktualisieren
@@ -47,30 +71,6 @@ Die wichtigsten Paketverwaltungssysteme:
 
     # Informationen zu einem Paket anzeigen
     apt show nginx
-    ```
-  </TabItem>
-  <TabItem label="RHEL/Fedora (dnf)">
-    ```bash
-    # Paketliste aktualisieren
-    dnf makecache
-
-    # Alle installierten Pakete aktualisieren
-    dnf update
-
-    # Paket suchen
-    dnf search nginx
-
-    # Paket installieren
-    dnf install nginx
-
-    # Paket entfernen
-    dnf remove nginx
-
-    # Nicht mehr benötigte Pakete entfernen
-    dnf autoremove
-
-    # Informationen zu einem Paket anzeigen
-    dnf info nginx
     ```
   </TabItem>
   <TabItem label="openSUSE (zypper)">
@@ -99,6 +99,23 @@ Die wichtigsten Paketverwaltungssysteme:
 ## Repository-Konfiguration
 
 <Tabs>
+  <TabItem label="RHEL/Fedora">
+    Repository-Dateien liegen in `/etc/yum.repos.d/*.repo`:
+
+    ```ini
+    [docker-ce-stable]
+    name=Docker CE Stable
+    baseurl=https://download.docker.com/linux/fedora/$releasever/$basearch/stable
+    enabled=1
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/fedora/gpg
+    ```
+
+    Oder direkt mit `dnf config-manager`:
+    ```bash
+    dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+    ```
+  </TabItem>
   <TabItem label="Debian/Ubuntu">
     Quellen werden in `/etc/apt/sources.list` und `/etc/apt/sources.list.d/*.list` konfiguriert:
 
@@ -121,23 +138,6 @@ Die wichtigsten Paketverwaltungssysteme:
     sudo apt install docker-ce
     ```
   </TabItem>
-  <TabItem label="RHEL/Fedora">
-    Repository-Dateien liegen in `/etc/yum.repos.d/*.repo`:
-
-    ```ini
-    [docker-ce-stable]
-    name=Docker CE Stable
-    baseurl=https://download.docker.com/linux/fedora/$releasever/$basearch/stable
-    enabled=1
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/fedora/gpg
-    ```
-
-    Oder direkt mit `dnf config-manager`:
-    ```bash
-    dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
-    ```
-  </TabItem>
   <TabItem label="openSUSE">
     Repository hinzufügen:
     ```bash
@@ -147,21 +147,7 @@ Die wichtigsten Paketverwaltungssysteme:
   </TabItem>
 </Tabs>
 
-## Installierte Pakete untersuchen
-
-```bash
-# Debian/Ubuntu
-dpkg -l                    # alle installierten Pakete auflisten
-dpkg -L nginx              # Dateien eines installierten Pakets anzeigen
-dpkg -S /usr/sbin/nginx    # zu welchem Paket gehört eine Datei?
-
-# RHEL/Fedora
-rpm -qa                    # alle installierten Pakete
-rpm -ql nginx              # Dateien eines Pakets
-rpm -qf /usr/sbin/nginx    # zu welchem Paket gehört eine Datei?
-```
-
 <Aside type="tip">
-`apt list --installed` (Debian) bzw. `dnf list installed` (RHEL) geben eine
-übersichtlichere Liste als `dpkg -l` bzw. `rpm -qa`.
+Weiterführende Abfragen — welchem Paket gehört eine Datei, Abhängigkeiten,
+Installationsverlauf, Integritätsprüfung — sind in [Pakete abfragen](./abfragen) beschrieben.
 </Aside>
