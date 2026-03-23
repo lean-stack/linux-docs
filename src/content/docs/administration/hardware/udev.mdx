@@ -1,0 +1,169 @@
+---
+title: udev
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**udev** ist der Gerätemanager des Linux-Kernels. Er reagiert auf Kernel-Events
+(Geräte ein-/ausgesteckt, erkannt beim Booten) und führt konfigurierbare Aktionen aus:
+Kernel-Modul laden, `/dev`-Eintrag erstellen, Berechtigungen setzen, Symlinks anlegen.
+
+## Architektur
+
+```
+Kernel erkennt Gerät
+        │
+        │  uevent (Netlink-Socket)
+        ▼
+    udevd (Daemon)
+        │
+        │  durchsucht Regeln in:
+        │  /usr/lib/udev/rules.d/   ← Distributions-Regeln (nicht editieren)
+        │  /etc/udev/rules.d/       ← eigene Regeln
+        │
+        ▼
+   Aktionen ausführen:
+   - Kernel-Modul laden (MODALIAS)
+   - /dev/name erstellen
+   - Symlink anlegen
+   - Berechtigungen setzen
+   - Programm ausführen
+```
+
+Regeln werden in **aufsteigender Reihenfolge** nach Dateiname ausgeführt (z. B. `10-...` vor `90-...`).
+
+## Geräte-Attribute auslesen
+
+Bevor eine Regel geschrieben werden kann, müssen die Attribute des Geräts bekannt sein:
+
+```bash
+# Gerät über /sys-Pfad abfragen
+udevadm info /sys/class/net/enp3s0
+udevadm info /sys/block/sda
+
+# Vollständige Attribut-Hierarchie (für Regeln)
+udevadm info --attribute-walk /sys/class/net/enp3s0
+udevadm info --attribute-walk /sys/bus/usb/devices/1-2
+```
+
+Die `--attribute-walk`-Ausgabe zeigt alle `ATTRS{...}`-Werte auf jedem Level der
+Gerätehierarchie — genau die Schlüsselwörter, die in Regeln verwendet werden.
+
+## Rule-Syntax
+
+Jede Regel besteht aus **Bedingungen** (Matching) und **Aktionen**:
+
+```
+# Kommentar
+SUBSYSTEM=="net", ATTR{address}=="00:11:22:33:44:55", NAME="eth-intern"
+```
+
+**Matching-Schlüsselwörter:**
+
+| Schlüsselwort | Bedeutung |
+|---|---|
+| `SUBSYSTEM` | Geräte-Subsystem (`net`, `block`, `usb`, ...) |
+| `KERNEL` | Kernel-Gerätename (`sda`, `ttyUSB*`, ...) |
+| `ATTR{name}` | sysfs-Attribut des Geräts |
+| `ATTRS{name}` | sysfs-Attribut eines Elterngeräts |
+| `ENV{name}` | Umgebungsvariable |
+| `ACTION` | Aktion (`add`, `remove`, `change`) |
+
+**Aktions-Schlüsselwörter:**
+
+| Schlüsselwort | Bedeutung |
+|---|---|
+| `NAME` | Name des /dev-Eintrags |
+| `SYMLINK` | zusätzlicher Symlink in /dev |
+| `MODE` | Dateiberechtigung (oktal) |
+| `OWNER` / `GROUP` | Besitzer/Gruppe |
+| `RUN` | Programm ausführen |
+| `LABEL` / `GOTO` | Sprünge innerhalb der Regeldatei |
+
+Operatoren: `==` (Bedingung), `!=` (negierte Bedingung), `=` (Zuweisung), `+=` (anhängen)
+
+## Beispiel: Stabiler Symlink für USB-Stick
+
+USB-Geräte bekommen als Gerätename `/dev/sdb`, `/dev/sdc` etc. — je nach
+Anschluss-Reihenfolge unterschiedlich. Eine udev-Regel kann einen festen Symlink setzen:
+
+```bash
+# Attribute des USB-Sticks ermitteln
+udevadm info --attribute-walk /sys/block/sdb | grep -E "serial|vendor|model"
+```
+
+```
+# /etc/udev/rules.d/99-usb-backup.rules
+SUBSYSTEM=="block", \
+  ATTRS{idVendor}=="0781", \
+  ATTRS{idSerial}=="12345678", \
+  SYMLINK+="backup"
+```
+
+Der USB-Stick ist jetzt zusätzlich als `/dev/backup` erreichbar — unabhängig davon,
+ob er als sdb, sdc oder sdd erkannt wird.
+
+## Beispiel: Berechtigungen für Gerät setzen
+
+```
+# /etc/udev/rules.d/99-arduino.rules
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", MODE="0666", GROUP="dialout"
+```
+
+## Regeln testen
+
+```bash
+# Regel simulieren ohne Neustart
+udevadm test /sys/block/sdb
+udevadm test /sys/class/net/enp3s0
+
+# Ausgabe zeigt, welche Regeln matchen und welche Aktionen ausgeführt würden
+```
+
+## Events beobachten
+
+```bash
+udevadm monitor                    # alle Kernel- und udev-Events
+udevadm monitor --kernel           # nur Kernel-Events
+udevadm monitor --udev             # nur verarbeitete udev-Events
+```
+
+Praktisch beim Einstecken eines USB-Geräts: man sieht sofort, welcher Gerätepfad
+vergeben wurde und welche Attribute vorhanden sind.
+
+## Regeln neu laden und anwenden
+
+```bash
+sudo udevadm control --reload-rules    # Regeln neu einlesen (ohne udevd-Neustart)
+sudo udevadm trigger                   # Events für alle Geräte erneut auslösen
+sudo udevadm trigger --subsystem-match=block  # nur Block-Geräte
+```
+
+## Persistente Netzwerknamen
+
+Netzwerkschnittstellen heißen heute `enp3s0` statt `eth0`. Diese **Predictable Network
+Interface Names** werden von udev (oder systemd-networkd) vergeben — basierend auf
+physischer Position (PCI-Slot, Port) statt Erkennungsreihenfolge.
+
+Schema:
+```
+en  p  3  s  0
+│   │  │  │  └─ Port 0
+│   │  │  └──── Slot (innerhalb des Buses)
+│   │  └─────── PCI-Bus 3
+│   └────────── p = PCI, u = USB, s = SATA/hotplug
+└────────────── en = Ethernet (wl = WLAN, ww = WWAN)
+```
+
+```bash
+# Aktuellen udev-Link-Namen anzeigen
+udevadm info /sys/class/net/enp3s0 | grep ID_NET_NAME
+```
+
+<Aside type="tip">
+Die Regel, die den stabilen Namen vergibt, liegt in
+`/usr/lib/udev/rules.d/80-net-setup-link.rules`. Sie liest Attribute wie
+`ID_NET_NAME_PATH` aus, die von systemd-udevd aus der PCI-Topologie abgeleitet werden.
+</Aside>

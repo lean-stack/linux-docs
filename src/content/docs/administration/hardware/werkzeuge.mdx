@@ -1,0 +1,178 @@
+---
+title: Hardware-Werkzeuge
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Eine Übersicht der wichtigsten Werkzeuge zur Hardware-Inventarisierung und -Diagnose.
+Einige sind vorinstalliert, andere müssen nachinstalliert werden.
+
+## Übersicht
+
+| Tool | Zweck | Paket |
+|---|---|---|
+| `lspci` | PCI/PCIe-Geräte | `pciutils` |
+| `lsusb` | USB-Geräte | `usbutils` |
+| `lscpu` | CPU-Details | vorinstalliert (`util-linux`) |
+| `lsblk` | Block-Geräte (Festplatten, Partitionen) | vorinstalliert (`util-linux`) |
+| `lsmem` | RAM-Blöcke | vorinstalliert (`util-linux`) |
+| `lshw` | vollständiges Hardware-Inventar | `lshw` |
+| `dmidecode` | BIOS/DMI-Tabellen | `dmidecode` |
+| `hwinfo` | detaillierter Hardware-Report | `hwinfo` |
+| `inxi` | kompakte System-Übersicht | `inxi` |
+
+## lspci — PCI-Geräte
+
+```bash
+lspci                      # alle PCI-Geräte (Kurzform)
+lspci -v                   # ausführlich inkl. Kernel-Modul
+lspci -k                   # nur Treiber-Info
+lspci -nn                  # mit Vendor-ID und Device-ID (für Recherche)
+lspci -v | grep -A 5 VGA   # Grafikkarte
+lspci -v | grep -A 5 -i ethernet
+```
+
+Beispielausgabe `lspci -k`:
+```
+00:1f.6 Ethernet controller: Intel Corporation Ethernet Connection (7) I219-V
+        Subsystem: Lenovo Ethernet Connection (7) I219-V
+        Kernel driver in use: e1000e
+        Kernel modules: e1000e
+```
+
+## lsusb — USB-Geräte
+
+```bash
+lsusb                      # alle USB-Geräte
+lsusb -v                   # ausführlich (sehr lang)
+lsusb -t                   # Baumansicht (Hub-Topologie)
+lsusb -d 046d:c52b         # gezielt nach Vendor:Product-ID suchen
+```
+
+## lscpu — CPU
+
+```bash
+lscpu                      # CPU-Architektur, Kerne, Threads, Cache, Flags
+lscpu -e                   # pro CPU-Kern (NUMA, Socket, Core-ID)
+```
+
+Wichtige Felder in der Ausgabe:
+- `Architecture` — x86_64, aarch64, ...
+- `CPU(s)` — logische CPUs (Kerne × Threads)
+- `Thread(s) per core` — 2 = Hyperthreading aktiv
+- `Virtualization` — VT-x / AMD-V für VMs
+- `Flags` — CPU-Fähigkeiten (avx2, aes, vmx, ...)
+
+## lsblk — Block-Geräte
+
+```bash
+lsblk                      # Festplatten und Partitionen (Baumansicht)
+lsblk -f                   # mit Dateisystem-Typ und UUID
+lsblk -o NAME,SIZE,TYPE,MOUNTPOINT,MODEL
+```
+
+## lsmem — RAM
+
+```bash
+lsmem                      # RAM-Blöcke und Größen
+free -h                    # RAM- und Swap-Belegung (schneller Überblick)
+```
+
+## lshw — vollständiges Inventar
+
+`lshw` (**l**i**s**t **h**ard**w**are) gibt einen vollständigen Hardware-Report aus —
+von CPU und RAM bis zu Netzwerkkarten und Speichergeräten.
+
+```bash
+sudo lshw                  # vollständiger Report (root für vollständige Infos)
+sudo lshw -short           # kompakte Übersicht
+sudo lshw -class network   # nur Netzwerk-Hardware
+sudo lshw -class disk      # nur Speicher
+sudo lshw -html > hw.html  # als HTML-Datei exportieren
+sudo lshw -json > hw.json  # als JSON exportieren
+```
+
+<Aside type="tip">
+`lshw -short` ist der schnellste Weg, einen Überblick über die gesamte Hardware
+zu bekommen — ideal als erster Schritt auf einem unbekannten System.
+</Aside>
+
+## dmidecode — BIOS/DMI-Tabellen
+
+`dmidecode` liest die DMI-Tabellen (Desktop Management Interface) aus dem BIOS/UEFI.
+Dort stehen Hersteller-Informationen, Seriennummern und physische Bestückung.
+
+```bash
+sudo dmidecode             # alles ausgeben (sehr lang)
+sudo dmidecode -t system   # System-Info (Hersteller, Modell, Seriennummer)
+sudo dmidecode -t bios     # BIOS-Version und Datum
+sudo dmidecode -t memory   # RAM-Slots (auch unbestückte), Typ, Geschwindigkeit
+sudo dmidecode -t processor  # CPU-Informationen
+```
+
+Beispiel für Seriennummer:
+```bash
+sudo dmidecode -s system-serial-number
+sudo dmidecode -s baseboard-product-name
+```
+
+<Aside type="note">
+`dmidecode` ist besonders nützlich um herauszufinden, wie viele RAM-Slots ein
+Rechner hat und welche belegt sind — ohne das Gehäuse öffnen zu müssen.
+</Aside>
+
+## hwinfo — detaillierter Report
+
+`hwinfo` liefert sehr detaillierte Informationen über einzelne Hardware-Klassen:
+
+```bash
+sudo hwinfo --short        # kompakte Gesamtübersicht
+sudo hwinfo --network      # Netzwerkkarten
+sudo hwinfo --disk         # Festplatten
+sudo hwinfo --cpu          # CPU
+sudo hwinfo --usb          # USB-Geräte
+sudo hwinfo --gfxcard      # Grafikkarten
+```
+
+Installation:
+```bash
+# RHEL/Fedora (EPEL)
+dnf install hwinfo
+
+# Debian/Ubuntu
+apt install hwinfo
+
+# openSUSE (vorinstalliert)
+```
+
+## inxi — kompakte System-Übersicht
+
+`inxi` ist ein beliebtes Werkzeug für schnelle System-Übersichten — besonders in
+Support-Foren genutzt, um System-Informationen kompakt darzustellen.
+
+```bash
+inxi -F                    # vollständige Übersicht (Full)
+inxi -Fxz                  # vollständig + extra Details + private Daten maskieren
+inxi -G                    # Grafik
+inxi -N                    # Netzwerk
+inxi -D                    # Festplatten
+inxi -C                    # CPU
+inxi -m                    # RAM
+```
+
+Beispielausgabe `inxi -Fxz`:
+```
+System:    Kernel: 6.1.0-18-amd64 arch: x86_64 Desktop: GNOME
+CPU:       Info: 4-core model: Intel Core i5-8250U bits: 64 type: MT MCP
+           Speed (MHz): avg: 800 min/max: 400/3400
+Memory:    RAM: total: 15.5 GiB used: 4.2 GiB (27.1%)
+```
+
+Installation:
+```bash
+apt install inxi           # Debian/Ubuntu
+dnf install inxi           # RHEL/Fedora
+zypper install inxi        # openSUSE
+```

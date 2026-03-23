@@ -1,0 +1,163 @@
+---
+title: Kernel & initramfs
+sidebar:
+  order: 4
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Nach dem Bootloader übernimmt der **Linux-Kernel**. Bevor er das eigentliche
+Root-Dateisystem einhängen kann, braucht er oft Treiber, die erst geladen werden
+müssen — ein Henne-Ei-Problem, das die **initramfs** löst.
+
+## Phase 3: Was der Kernel beim Start tut
+
+```
+GRUB lädt Kernel + initramfs in den RAM
+        │
+        ▼
+Kernel entpackt und startet sich selbst
+        │
+        ▼
+Kernel mountet initramfs als temporäres Root-Filesystem (/)
+        │
+        ▼
+/init (oder /sbin/init) aus der initramfs wird als PID 1 gestartet
+        │
+        ├── Kernel-Module laden (Treiber für Festplatte, RAID, Crypto, ...)
+        ├── Geräte erkennen (udev)
+        ├── ggf. Verschlüsselung entsperren (cryptsetup)
+        ├── ggf. RAID zusammenbauen (mdadm)
+        │
+        ▼
+Echtes Root-Dateisystem einhängen (pivot_root)
+        │
+        ▼
+systemd (PID 1 im echten Root) übernimmt → Phase 4
+```
+
+## initramfs — temporäres Root-Dateisystem
+
+**initramfs** (initial RAM filesystem) ist ein komprimiertes `cpio`-Archiv, das der
+Bootloader zusammen mit dem Kernel in den Arbeitsspeicher lädt. Es enthält ein
+minimales Linux-System mit allem, was gebraucht wird um das echte Root-Dateisystem
+zu mounten.
+
+Typischer Inhalt:
+- Kernel-Module (Treiber für Festplatten-Controller, Dateisysteme)
+- `udev` (Geräte-Erkennung)
+- `busybox` (Shell und Basis-Werkzeuge)
+- `cryptsetup` (bei verschlüsseltem Root-FS)
+- `mdadm` (bei Software-RAID)
+- `nfs-utils` (bei NFS-Root)
+
+### initrd vs. initramfs
+
+| | initrd | initramfs |
+|---|---|---|
+| Format | Disk-Image (ext2) | cpio-Archiv (komprimiert) |
+| Einbindung | als Block-Device gemountet | direkt im RAM entpackt |
+| Status | veraltet | aktueller Standard |
+
+Trotzdem heißt die Datei oft noch `initrd.img-...` — historisch bedingt.
+
+### Speicherort
+
+```bash
+ls -lh /boot/
+# initrd.img-6.1.0-18-amd64    ← Debian/Ubuntu
+# initramfs-6.1.0-67.el9.img   ← RHEL/Fedora
+# initramfs-linux.img           ← Arch
+```
+
+## Inhalt inspizieren
+
+```bash
+# Debian/Ubuntu
+lsinitramfs /boot/initrd.img-$(uname -r)
+lsinitramfs /boot/initrd.img-$(uname -r) | grep crypt   # enthält cryptsetup?
+
+# RHEL/Fedora
+lsinitrd /boot/initramfs-$(uname -r).img
+lsinitrd /boot/initramfs-$(uname -r).img | grep mdadm
+
+# Manuell entpacken (Arch / alle):
+mkdir /tmp/initramfs && cd /tmp/initramfs
+unmkinitramfs /boot/initramfs-linux.img .    # Debian-Tool
+# oder:
+cpio -idv < <(zcat /boot/initrd.img-$(uname -r))
+```
+
+## initramfs neu erstellen
+
+Nach Änderungen an Kernel-Modulen, Treiber-Konfiguration oder Blacklists muss
+die initramfs neu erstellt werden:
+
+<Tabs>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    # Aktuellen Kernel
+    sudo update-initramfs -u
+
+    # Alle installierten Kernel
+    sudo update-initramfs -u -k all
+
+    # Für einen bestimmten Kernel
+    sudo update-initramfs -u -k 6.1.0-18-amd64
+    ```
+  </TabItem>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    # Aktuellen Kernel
+    sudo dracut --force
+
+    # Bestimmten Kernel
+    sudo dracut --force /boot/initramfs-$(uname -r).img $(uname -r)
+
+    # Mit mehr Details
+    sudo dracut --force --verbose
+    ```
+  </TabItem>
+  <TabItem label="Arch">
+    ```bash
+    # Alle Kernel (empfohlen nach Modul-Änderungen)
+    sudo mkinitcpio -P
+
+    # Bestimmtes Preset
+    sudo mkinitcpio -p linux
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="caution">
+Nach Änderungen an `/etc/modprobe.d/` (Blacklist, Parameter) muss die initramfs
+neu erstellt werden — sonst sind die Änderungen nur für Module aktiv, die nach dem
+initramfs-Start geladen werden, nicht für Module die bereits darin sind.
+</Aside>
+
+## Kernel-Parameter
+
+Der Bootloader übergibt dem Kernel beim Start Parameter. Die aktiven Parameter des
+laufenden Systems:
+
+```bash
+cat /proc/cmdline
+# BOOT_IMAGE=/boot/vmlinuz-6.1.0 root=UUID=abc123 quiet splash
+```
+
+Häufige Kernel-Parameter:
+
+| Parameter | Bedeutung |
+|---|---|
+| `root=UUID=...` | Root-Dateisystem (UUID oder Pfad) |
+| `quiet` | Kernel-Meldungen beim Booten unterdrücken |
+| `splash` | Grafischer Bootsplash anzeigen |
+| `nomodeset` | Kernel-Modesetting deaktivieren (Grafik-Probleme) |
+| `single` / `1` | Single-User-Modus (Rettungsmodus) |
+| `rd.luks.uuid=...` | LUKS-verschlüsselte Partition entsperren |
+| `rd.md.uuid=...` | Software-RAID-Array angeben |
+| `init=/bin/bash` | Alternative zu systemd (nur für Notfälle) |
+
+Parameter dauerhaft setzen: in der GRUB-Konfiguration unter `GRUB_CMDLINE_LINUX_DEFAULT`
+in `/etc/default/grub`, dann `update-grub` / `grub-mkconfig` ausführen.
+Mehr dazu: [Bootloader](./bootloader)

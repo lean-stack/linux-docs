@@ -10,79 +10,59 @@ Bevor eine Netzwerkschnittstelle konfiguriert werden kann, muss der Kernel die H
 erkennen und den richtigen Treiber laden. Normalerweise geschieht das automatisch —
 aber manchmal muss man nachhelfen.
 
+Die allgemeinen Mechanismen (Kernel-Module, udev) sind in der
+[Hardware-Sektion](../hardware/) beschrieben. Hier der netzwerkspezifische Fokus.
+
 ## Netzwerkkarten identifizieren
 
 ```bash
 # Alle PCI-Geräte anzeigen
-lspci
+lspci -k
 
-# Ausführlich, inkl. Kernel-Modul
-lspci -v
-
-# Nur Netzwerkkarten filtern
-lspci -v | grep -A 10 -i ethernet
-lspci -v | grep -A 10 -i network
+# Nur Netzwerkkarten
+lspci -k | grep -A 3 -i ethernet
+lspci -k | grep -A 3 -i network
+lspci -k | grep -A 3 -i wireless
 ```
 
 Beispielausgabe:
 ```
 02:00.0 Ethernet controller: Intel Corporation I211 Gigabit Network Connection (rev 03)
-        Subsystem: ASRock Incorporation I211 Gigabit Network Connection
         Kernel driver in use: igb
         Kernel modules: igb
 ```
 
 Die Zeile `Kernel driver in use: igb` zeigt, dass der Treiber geladen ist.
-
-## Kernel-Modul prüfen
-
-```bash
-# Ist das Modul geladen?
-lsmod | grep igb
-
-# Modul manuell laden
-modprobe igb
-
-# Modul dauerhaft laden (beim Systemstart)
-echo "igb" | sudo tee /etc/modules-load.d/igb.conf
-
-# Kernel-Messages nach Modul durchsuchen
-dmesg | grep igb
-```
+Fehlt diese Zeile, ist kein Treiber aktiv.
 
 ## Schnittstellen anzeigen
 
 ```bash
-# Alle Netzwerkschnittstellen
-ip link show
-
-# Kurzform
-ip l
-
-# Detaillierte Ansicht einer Schnittstelle
-ip link show dev enp3s0
+ip link show               # alle Netzwerkschnittstellen
+ip link show dev enp3s0    # Details einer Schnittstelle
 ```
 
-## udev — automatische Geräteverwaltung
-
-`udev` ist der Gerätemanager des Linux-Kernels. Er reagiert auf Kernel-Events
-(Gerät erkannt, entfernt) und lädt automatisch den passenden Treiber.
+## Modul prüfen und laden
 
 ```bash
-# udev-Attribute einer Schnittstelle abfragen
-udevadm info --query=path /sys/class/net/enp3s0
-
-# Ausführliche Attribute (zur Erstellung eigener udev-Regeln)
-udevadm info --attribute-walk --path=$(udevadm info --query=path /sys/class/net/enp3s0)
-
-# udev-Events live beobachten
-udevadm monitor
+lsmod | grep igb           # ist das Modul geladen?
+sudo modprobe igb          # manuell laden
+dmesg | grep igb           # Kernel-Meldungen zum Modul
 ```
 
-<Aside type="note">
-Wenn eine Netzwerkkarte nicht erkannt wird, hilft oft `dmesg | tail -50` direkt nach
-dem Einstecken — der Kernel meldet dort, ob und welches Modul geladen wurde.
-</Aside>
+Mehr zu Kernel-Modulen: [Kernel-Module](../hardware/kernel-module)
+
+## udev-Events beobachten
+
+```bash
+# Live-Ansicht beim Einstecken einer Netzwerkkarte
+udevadm monitor --udev
+
+# Attribute einer Schnittstelle
+udevadm info /sys/class/net/enp3s0
+```
+
+Mehr zu udev und eigenen Regeln: [udev](../hardware/udev)
 
 ## Fehlende Firmware
 
@@ -94,9 +74,15 @@ dmesg | grep -i firmware
 
 # Beispiel: Intel WLAN-Karte
 # "iwlwifi: Direct firmware load for iwlwifi-*.ucode failed"
+
 # Lösung unter Debian/Ubuntu:
-apt install firmware-iwlwifi
+sudo apt install firmware-iwlwifi
 
 # Alle verfügbaren Firmware-Pakete:
 apt search firmware-
 ```
+
+<Aside type="note">
+Wenn eine Netzwerkkarte nicht erkannt wird, hilft `dmesg | tail -50` direkt nach
+dem Einstecken — der Kernel meldet dort, ob und welches Modul geladen wurde.
+</Aside>

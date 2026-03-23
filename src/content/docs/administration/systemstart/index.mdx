@@ -39,10 +39,13 @@ Der Bootloader lädt den Linux-Kernel in den Arbeitsspeicher und übergibt
 Startparameter. Auf Linux-Systemen ist **GRUB** am weitesten verbreitet.
 Mehr dazu: [Bootloader](./bootloader)
 
-## Phase 3: Kernel
+## Phase 3: Kernel & initramfs
 
-Der Kernel erkennt und initialisiert Hardware, lädt Treiber (als Module),
-hängt das Root-Dateisystem ein und startet als erstes Programm den Init-Prozess.
+Der Kernel erkennt und initialisiert Hardware, lädt Treiber (als Module).
+Dazu entpackt er zuerst eine **initramfs** — ein temporäres Root-Dateisystem im RAM,
+das Treiber und Werkzeuge enthält, die vor dem eigentlichen Root-FS gebraucht werden
+(z. B. für verschlüsselte Partitionen oder Software-RAID).
+Mehr dazu: [Kernel & initramfs](./kernel)
 
 ## Phase 4: Init-System (systemd)
 

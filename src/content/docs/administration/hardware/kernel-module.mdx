@@ -1,0 +1,186 @@
+---
+title: Kernel-Module
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Der Linux-Kernel ist modular aufgebaut. **Kernel-Module** sind Treiber und
+Erweiterungen, die zur Laufzeit in den Kernel geladen und wieder entladen werden
+können — ohne Neustart.
+
+```bash
+uname -r                   # aktuelle Kernel-Version
+# 6.1.0-18-amd64
+```
+
+Module liegen als `.ko`-Dateien unter `/lib/modules/$(uname -r)/`:
+
+```bash
+find /lib/modules/$(uname -r) -name "*.ko" | head -10
+```
+
+## Geladene Module anzeigen
+
+```bash
+lsmod                      # alle aktuell geladenen Module
+
+# Ausgabe-Spalten:
+# Module        Size    Used by
+# e1000e        245760  0
+# i2c_algo_bit   16384  1 e1000e
+```
+
+- **Module** — Name des Moduls
+- **Size** — Speicherbedarf in Bytes
+- **Used by** — andere Module oder Geräte, die dieses Modul nutzen (Referenzzähler)
+
+## Modul-Informationen
+
+```bash
+modinfo e1000e             # Metadaten des Moduls
+```
+
+Wichtige Felder:
+```
+filename:  /lib/modules/.../e1000e.ko
+description: Intel(R) PRO/1000 Network Driver
+author:    Intel Corporation
+license:   GPL v2
+depends:   ptp
+vermagic:  6.1.0-18-amd64 SMP ...
+parm:      debug:Debug level (0=none,...) (uint)
+```
+
+`parm` zeigt verfügbare Parameter des Moduls — nützlich für `/etc/modprobe.d/`.
+
+## Module laden und entladen
+
+```bash
+sudo modprobe e1000e           # Modul laden (inkl. Abhängigkeiten)
+sudo modprobe -r e1000e        # Modul entladen (inkl. nicht mehr benötigter Abhängigkeiten)
+
+sudo rmmod e1000e              # direkt entladen (ohne Abhängigkeitsauflösung)
+```
+
+<Aside type="caution">
+Ein Modul kann nur entladen werden, wenn es nicht mehr verwendet wird (Used by = 0).
+Aktive Netzwerkkarten, eingehängte Dateisysteme oder laufende Prozesse verhindern das Entladen.
+</Aside>
+
+## Dauerhaft laden
+
+Module, die beim Systemstart geladen werden sollen, werden in `/etc/modules-load.d/` konfiguriert:
+
+```bash
+# /etc/modules-load.d/meine-module.conf
+# Eine Zeile pro Modul:
+br_netfilter
+overlay
+```
+
+```bash
+# Sofort aktivieren (ohne Neustart):
+sudo modprobe br_netfilter
+# Beim nächsten Boot automatisch durch systemd-modules-load.service
+```
+
+## Modul-Parameter
+
+Parameter eines Moduls werden in `/etc/modprobe.d/` gesetzt:
+
+```bash
+# /etc/modprobe.d/iwlwifi.conf
+options iwlwifi power_save=0 11n_disable=1
+```
+
+Parameter sofort wirksam machen:
+```bash
+sudo modprobe -r iwlwifi && sudo modprobe iwlwifi power_save=0
+```
+
+Aktuell gesetzte Parameter lesen:
+```bash
+cat /sys/module/iwlwifi/parameters/power_save
+```
+
+## Module sperren (Blacklist)
+
+Manchmal lädt der Kernel ein falsches Modul, oder ein Modul verursacht Probleme.
+Mit einer Blacklist wird es dauerhaft gesperrt:
+
+```bash
+# /etc/modprobe.d/blacklist.conf
+blacklist nouveau          # proprietären nvidia-Treiber stattdessen nutzen
+blacklist pcspkr           # PC-Lautsprecher deaktivieren
+```
+
+Damit udev das Modul trotzdem nicht lädt, zusätzlich:
+```bash
+# /etc/modprobe.d/blacklist.conf
+install nouveau /bin/false
+```
+
+<Aside type="tip">
+Nach Änderungen an `/etc/modprobe.d/` muss die initramfs neu erstellt werden,
+damit die Änderungen auch beim Booten greifen:
+
+```bash
+update-initramfs -u          # Debian/Ubuntu
+dracut --force               # RHEL/Fedora
+mkinitcpio -P                # Arch
+```
+</Aside>
+
+## Kernel-Konfiguration einsehen
+
+Jeder laufende Kernel hat eine Konfigurationsdatei, die zeigt, welche Features
+eingebaut (`Y`), als Modul (`M`) oder deaktiviert (`N`) sind:
+
+```bash
+# Konfiguration des laufenden Kernels
+cat /boot/config-$(uname -r) | grep -i "CONFIG_E1000E"
+# CONFIG_E1000E=m   ← als Modul verfügbar
+
+zcat /proc/config.gz        # alternativ (wenn Kernel dies unterstützt)
+```
+
+Erklärung der Werte:
+| Wert | Bedeutung |
+|---|---|
+| `=y` | fest eingebaut (kein Modul, immer aktiv) |
+| `=m` | als ladbares Modul verfügbar |
+| `# ... is not set` | deaktiviert |
+
+## sysctl — Kernel-Parameter zur Laufzeit
+
+`sysctl` ermöglicht es, Kernel-Parameter zur Laufzeit zu lesen und zu setzen.
+Die Werte liegen unter `/proc/sys/`:
+
+```bash
+sysctl -a                              # alle Parameter anzeigen
+sysctl net.ipv4.ip_forward             # einzelnen Parameter lesen
+sudo sysctl -w net.ipv4.ip_forward=1   # Parameter setzen (bis zum Neustart)
+```
+
+Dauerhaft setzen in `/etc/sysctl.d/`:
+
+```bash
+# /etc/sysctl.d/99-netzwerk.conf
+net.ipv4.ip_forward = 1
+vm.swappiness = 10
+```
+
+```bash
+sudo sysctl --system        # alle sysctl-Dateien neu einlesen
+```
+
+Häufig genutzte Parameter:
+
+| Parameter | Bedeutung |
+|---|---|
+| `net.ipv4.ip_forward` | IP-Weiterleitung (für Router/VMs) |
+| `vm.swappiness` | Neigung des Kernels zur Swap-Nutzung (0–100) |
+| `kernel.hostname` | Hostname des Systems |
+| `fs.inotify.max_user_watches` | Max. Datei-Watches (z. B. für IDEs erhöhen) |

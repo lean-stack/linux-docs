@@ -75,6 +75,7 @@ export default defineConfig({
 						{ label: 'Paketverwaltung',    autogenerate: { directory: 'administration/pakete' } },
 						{ label: 'Systemstart',        autogenerate: { directory: 'administration/systemstart' } },
 						{ label: 'Netzwerk',           autogenerate: { directory: 'administration/netzwerk' } },
+						{ label: 'Hardware',           autogenerate: { directory: 'administration/hardware' } },
 						{ label: 'Datenträger',        autogenerate: { directory: 'administration/datentraeger' } },
 						{ label: 'Systemgrundlagen',   autogenerate: { directory: 'administration/systemgrundlagen' } },
 					],

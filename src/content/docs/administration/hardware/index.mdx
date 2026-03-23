@@ -1,0 +1,87 @@
+---
+title: Hardware-Erkennung
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Linux erkennt Hardware weitgehend automatisch — ohne manuelle Treiber-Installation
+wie unter Windows. Der Mechanismus dahinter ist ein Zusammenspiel aus Kernel, sysfs und udev.
+
+## Der Erkennungsablauf
+
+```
+┌─────────────────────────────────┐
+│  Hardware (PCI, USB, ACPI, ...)  │
+└──────────────┬──────────────────┘
+               │  Gerät angeschlossen / Systemstart
+               ▼
+┌─────────────────────────────────┐
+│  Linux-Kernel                   │
+│  erkennt Gerät, liest Vendor-ID │
+│  und Device-ID                  │
+└──────────────┬──────────────────┘
+               │  schreibt Gerätedaten
+               ▼
+┌─────────────────────────────────┐
+│  sysfs  (/sys)                  │
+│  virtuelle Gerätehierarchie     │
+│  im Dateisystem                 │
+└──────────────┬──────────────────┘
+               │  uevent (Kernel-Ereignis)
+               ▼
+┌─────────────────────────────────┐
+│  udev  (Gerätemanager)          │
+│  wertet Regeln aus              │
+│  lädt Kernel-Modul (Treiber)    │
+│  erstellt /dev-Eintrag          │
+│  setzt Berechtigungen           │
+└─────────────────────────────────┘
+```
+
+## sysfs — die Gerätehierarchie
+
+`/sys` ist ein virtuelles Dateisystem, das der Kernel im Arbeitsspeicher hält.
+Es spiegelt die gesamte Hardware-Topologie als Verzeichnisbaum:
+
+```bash
+ls /sys/bus/          # PCI, USB, i2c, platform, ...
+ls /sys/class/        # net, block, input, drm, ...
+ls /sys/devices/      # physische Gerätehierarchie
+```
+
+Attribute eines Geräts lesen:
+
+```bash
+cat /sys/class/net/enp3s0/speed     # Netzwerkgeschwindigkeit
+cat /sys/class/block/sda/size       # Größe in 512-Byte-Blöcken
+cat /sys/class/thermal/thermal_zone0/temp  # CPU-Temperatur (in Milligrad)
+```
+
+<Aside type="note">
+`/sys` ist read-only für normale Benutzer. Root kann in einige Attribute schreiben
+um Kernel-Parameter zur Laufzeit zu ändern — dafür gibt es aber `sysctl` als
+komfortablere Schnittstelle.
+</Aside>
+
+## /proc — Kernel-Informationen
+
+`/proc` ist ein weiteres virtuelles Dateisystem mit Kernel- und Prozess-Informationen:
+
+```bash
+cat /proc/cpuinfo          # CPU-Details (Modell, Kerne, Flags)
+cat /proc/meminfo          # RAM und Swap-Belegung
+cat /proc/modules          # geladene Kernel-Module (wie lsmod)
+cat /proc/devices          # registrierte Gerätetypen
+cat /proc/interrupts       # IRQ-Zuweisungen
+cat /proc/cmdline          # Kernel-Parameter beim Booten
+cat /proc/version          # Kernel-Version und Compiler
+```
+
+## Themen dieser Sektion
+
+- [Werkzeuge](./werkzeuge) — lspci, lsusb, lshw, dmidecode, inxi und mehr
+- [Kernel-Module](./kernel-module) — Treiber laden, konfigurieren, sperren
+- [udev](./udev) — Gerätemanager, eigene Regeln schreiben
