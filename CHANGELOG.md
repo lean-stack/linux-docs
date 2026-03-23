@@ -1,6 +1,20 @@
 # Changelog
 
 
+## v1.0.0-pre.0
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v0.3.0...v1.0.0-pre.0)
+
+### 🚀 Enhancements
+
+- Add rechte, startdateien und admin docs. ([ccd7e08](https://github.com/lean-stack/linux-docs/commit/ccd7e08))
+- Add more package management content. ([5f0a315](https://github.com/lean-stack/linux-docs/commit/5f0a315))
+
+### 🏡 Chore
+
+- Update astro. ([6dac912](https://github.com/lean-stack/linux-docs/commit/6dac912))
+- Delete migrated docs. ([ab58352](https://github.com/lean-stack/linux-docs/commit/ab58352))
+
 ## v0.3.0
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v0.2.1...v0.3.0)
