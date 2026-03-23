@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v1.0.0-pre.1
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.0-pre.0...v1.0.0-pre.1)
+
+### 🚀 Enhancements
+
+- Add hardware/kernel related articles ([cde02ba](https://github.com/lean-stack/linux-docs/commit/cde02ba))
+
+### 💅 Refactors
+
+- Add kernel loading via UEFI. ([4babfd7](https://github.com/lean-stack/linux-docs/commit/4babfd7))
+
 ## v1.0.0-pre.0
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v0.3.0...v1.0.0-pre.0)
