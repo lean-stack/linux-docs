@@ -69,7 +69,15 @@ export default defineConfig({
 				},
 				{
 					label: 'Administration',
-					autogenerate: { directory: 'administration' },
+					items: [
+						{ label: 'Einführung', slug: 'administration' },
+						{ label: 'Benutzerverwaltung', autogenerate: { directory: 'administration/benutzer' } },
+						{ label: 'Paketverwaltung',    autogenerate: { directory: 'administration/pakete' } },
+						{ label: 'Systemstart',        autogenerate: { directory: 'administration/systemstart' } },
+						{ label: 'Netzwerk',           autogenerate: { directory: 'administration/netzwerk' } },
+						{ label: 'Datenträger',        autogenerate: { directory: 'administration/datentraeger' } },
+						{ label: 'Systemgrundlagen',   autogenerate: { directory: 'administration/systemgrundlagen' } },
+					],
 				},
 			],
 		}),

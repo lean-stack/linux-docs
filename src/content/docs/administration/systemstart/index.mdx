@@ -1,0 +1,59 @@
+---
+title: Systemstart
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+Der Start eines Linux-Systems läuft in vier klar getrennten Phasen ab:
+
+```
+┌─────────────────┐
+│  1. Firmware    │  UEFI oder BIOS — Hardware initialisieren
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│  2. Bootloader  │  GRUB — Kernel laden
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│  3. Kernel      │  Hardware erkennen, Treiber laden, Root-FS einhängen
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│  4. Init-System │  systemd (PID 1) — Dienste starten
+└─────────────────┘
+```
+
+## Phase 1: Firmware (UEFI / BIOS)
+
+Die Firmware ist das erste Programm, das beim Einschalten ausgeführt wird. Sie
+initialisiert die Hardware und übergibt die Kontrolle an den Bootloader.
+
+Moderne Systeme nutzen **UEFI** (Unified Extensible Firmware Interface), ältere
+**BIOS** (Basic Input/Output System). Mehr dazu: [Firmware](./firmware)
+
+## Phase 2: Bootloader
+
+Der Bootloader lädt den Linux-Kernel in den Arbeitsspeicher und übergibt
+Startparameter. Auf Linux-Systemen ist **GRUB** am weitesten verbreitet.
+Mehr dazu: [Bootloader](./bootloader)
+
+## Phase 3: Kernel
+
+Der Kernel erkennt und initialisiert Hardware, lädt Treiber (als Module),
+hängt das Root-Dateisystem ein und startet als erstes Programm den Init-Prozess.
+
+## Phase 4: Init-System (systemd)
+
+`systemd` ist heute auf den meisten Distributionen der Init-Prozess (PID 1).
+Er startet alle weiteren Dienste in der konfigurierten Reihenfolge.
+Mehr dazu: [systemd](./systemd)
+
+## Distributionsunterschiede
+
+Die meisten Distributionen nutzen systemd. Ausnahmen:
+- **Gentoo**: OpenRC, runit oder systemd — frei wählbar
+- **Alpine Linux**: OpenRC
+- **Void Linux**: runit
+- **Devuan**: sysvinit oder andere (bewusster systemd-Verzicht)

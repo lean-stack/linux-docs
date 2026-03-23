@@ -1,0 +1,142 @@
+---
+title: systemd
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`systemd` ist auf den meisten modernen Linux-Distributionen der **Init-Prozess** (PID 1) —
+das erste Programm, das der Kernel startet. Es ist dafür zuständig, alle weiteren Dienste
+in der richtigen Reihenfolge zu starten und zu überwachen.
+
+## Units — die Bausteine von systemd
+
+Alles in systemd wird über sogenannte **Units** konfiguriert — Konfigurationsdateien
+mit festgelegten Typen:
+
+| Typ | Endung | Bedeutung |
+|---|---|---|
+| Service | `.service` | Hintergrrunddienst (Daemon) |
+| Timer | `.timer` | Zeitgesteuerter Auftrag (cron-Ersatz) |
+| Socket | `.socket` | Socket-aktivierter Dienst |
+| Target | `.target` | Gruppe von Units (Abhängigkeitspunkt) |
+| Mount | `.mount` | Einhängepunkt |
+| Device | `.device` | Gerätedatei |
+
+Unit-Dateien liegen in:
+- `/lib/systemd/system/` — von Paketen installiert (nicht bearbeiten)
+- `/etc/systemd/system/` — lokale Konfiguration (Overrides)
+- `~/.config/systemd/user/` — Benutzer-Units
+
+## Dienste verwalten mit `systemctl`
+
+```bash
+# Status eines Dienstes anzeigen
+systemctl status nginx
+
+# Dienst starten / stoppen / neustarten
+systemctl start nginx
+systemctl stop nginx
+systemctl restart nginx
+
+# Dienst beim Systemstart aktivieren / deaktivieren
+systemctl enable nginx
+systemctl disable nginx
+
+# Direkt starten und aktivieren in einem Schritt
+systemctl enable --now nginx
+
+# Alle laufenden Dienste anzeigen
+systemctl list-units --type=service --state=running
+
+# Alle fehlgeschlagenen Units anzeigen
+systemctl --failed
+```
+
+## Das System steuern
+
+```bash
+systemctl reboot          # Neustart
+systemctl poweroff        # Herunterfahren
+systemctl halt            # CPU anhalten (ohne Strom abschalten)
+systemctl suspend         # Ruhemodus (RAM)
+systemctl hibernate       # Tiefschlaf (Festplatte)
+```
+
+## Targets — Systemzustände
+
+Targets gruppieren Units und definieren Systemzustände (früher: Runlevel):
+
+| Target | Beschreibung | Runlevel |
+|---|---|---|
+| `poweroff.target` | System ausschalten | 0 |
+| `rescue.target` | Einzelbenutzer-Modus | 1 |
+| `multi-user.target` | Mehrbenutzer ohne GUI | 3 |
+| `graphical.target` | Mehrbenutzer mit GUI | 5 |
+| `reboot.target` | Neustart | 6 |
+
+```bash
+systemctl get-default              # aktuelles Standard-Target anzeigen
+systemctl set-default multi-user.target   # Standard-Target setzen
+systemctl isolate rescue.target    # sofort in rescue-Modus wechseln
+```
+
+## Logs mit `journalctl`
+
+`systemd` protokolliert alle Dienst-Ausgaben im **Journal**:
+
+```bash
+journalctl                         # gesamtes Journal (älteste zuerst)
+journalctl -f                      # neue Einträge live verfolgen (wie tail -f)
+journalctl -u nginx                # nur Logs von nginx
+journalctl -u nginx -f             # nginx-Logs live verfolgen
+journalctl -b                      # Logs seit dem letzten Boot
+journalctl -b -1                   # Logs vom vorletzten Boot
+journalctl --since "2024-01-01"    # Logs ab einem Datum
+journalctl --since "1 hour ago"    # Logs der letzten Stunde
+journalctl -p err                  # nur Fehler (err, warning, info, debug)
+journalctl -xe                     # letzte Einträge mit Kontext (gut nach Fehlern)
+```
+
+## Eigene Service-Unit erstellen
+
+Beispiel: einen einfachen Dienst einrichten, der ein Python-Skript ausführt:
+
+```ini
+# /etc/systemd/system/mein-dienst.service
+[Unit]
+Description=Mein eigener Dienst
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/mein-app
+ExecStart=/usr/bin/python3 /opt/mein-app/server.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl daemon-reload            # systemd über neue Datei informieren
+systemctl enable --now mein-dienst
+```
+
+## Diagnose und Analyse
+
+```bash
+systemd-analyze                    # Bootzeit anzeigen
+systemd-analyze blame              # Dienste nach Bootzeit sortiert
+systemd-analyze critical-chain     # kritischer Pfad beim Booten
+
+systemctl list-dependencies nginx  # Abhängigkeiten eines Dienstes
+```
+
+<Aside type="tip">
+`systemctl status <dienst>` zeigt nicht nur den Status, sondern auch die letzten
+Log-Zeilen — ideal als erster Schritt bei der Fehlersuche.
+</Aside>

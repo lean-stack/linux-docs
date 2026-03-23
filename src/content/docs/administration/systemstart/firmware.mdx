@@ -1,0 +1,63 @@
+---
+title: Firmware — UEFI & BIOS
+sidebar:
+  order: 2
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Die Firmware ist das erste Programm, das beim Einschalten eines Rechners ausgeführt wird.
+Sie initialisiert Hardware (RAM-Test, CPU-Erkennung, Geräteerkennung) und startet dann
+den Bootloader.
+
+## UEFI — moderner Standard
+
+**UEFI** (Unified Extensible Firmware Interface) ist der aktuelle Standard und ersetzt
+seit ca. 2012 schrittweise das ältere BIOS.
+
+### Bootprozess unter UEFI
+
+1. UEFI initialisiert die Hardware
+2. UEFI sucht auf allen Datenträgern nach einer **EFI System Partition (ESP)** — eine
+   FAT32-Partition mit dem Typ-GUID `C12A7328-F81F-11D2-BA4B-00A0C93EC93B`
+3. In der ESP sucht UEFI nach `.efi`-Dateien (Bootloader-Programme)
+4. Welche Datei gestartet wird, bestimmen die **NVRAM-Booteinträge** (dauerhaft im
+   Firmware-Speicher gespeichert)
+5. Fallback: Wenn kein NVRAM-Eintrag passt, wird `\EFI\BOOT\BOOTx64.EFI` geladen
+   (wichtig für bootfähige USB-Sticks und neue Festplatten)
+
+### UEFI-Booteinträge verwalten
+
+```bash
+efibootmgr -v              # alle Booteinträge anzeigen
+efibootmgr -n 0001         # beim nächsten Start Eintrag 0001 booten
+efibootmgr -o 0001,0000    # Bootreihenfolge festlegen
+```
+
+<Aside type="note">
+Auf UEFI-Systemen liegt der GRUB-Bootloader als `.efi`-Datei auf der ESP, typischerweise
+unter `/boot/efi/EFI/GRUB/grubx64.efi` oder `/boot/efi/EFI/debian/grubx64.efi`.
+</Aside>
+
+## BIOS — älterer Standard
+
+Das ältere **BIOS** (Basic Input/Output System) nutzt einen anderen Mechanismus:
+
+1. BIOS initialisiert die Hardware
+2. BIOS liest den **Master Boot Record (MBR)** — die ersten 512 Bytes des Boot-Datenträgers
+3. Im MBR liegt der erste Teil des Bootloaders (Stage 1), der den Rest nachlädt
+
+### GPT mit BIOS
+
+Neuere GPT-Partitionstabellen benötigen auf BIOS-Systemen eine spezielle
+**BIOS Boot Partition** (ca. 1 MB, Typ `BIOS boot`), in der GRUB seinen Code ablegt.
+
+## Vergleich UEFI vs. BIOS
+
+| | UEFI | BIOS |
+|---|---|---|
+| Partitionstabelle | GPT (empfohlen) | MBR |
+| Bootloader-Speicherort | ESP (eigene Partition) | MBR / BIOS Boot Partition |
+| Secure Boot | Ja | Nein |
+| Max. Disk-Größe | > 2 TB | 2 TB (MBR-Limit) |
+| Partitionen | bis 128 (GPT) | 4 primäre (MBR) |

@@ -1,0 +1,63 @@
+---
+title: Netzwerk
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+Die Netzwerkkonfiguration unter Linux läuft in vier Phasen ab:
+
+```
+┌─────────────────────────────────┐
+│  1. Hardware-Erkennung          │
+│     Kernel + udev               │
+│     Netzwerkkarte wird erkannt  │
+└────────────────┬────────────────┘
+                 │
+┌────────────────▼────────────────┐
+│  2. Treiber laden               │
+│     udev lädt Kernel-Modul      │
+│     Gerät erscheint als eth0,   │
+│     enp3s0 o. ä.                │
+└────────────────┬────────────────┘
+                 │
+┌────────────────▼────────────────┐
+│  3. Konfiguration               │
+│     IP-Adresse, Routing, DNS    │
+│     manuell oder automatisch    │
+└────────────────┬────────────────┘
+                 │
+┌────────────────▼────────────────┐
+│  4. Verwaltung                  │
+│     NetworkManager /            │
+│     systemd-networkd            │
+└─────────────────────────────────┘
+```
+
+## Konfigurationswerkzeuge
+
+Je nach Einsatzzweck kommen unterschiedliche Tools zum Einsatz:
+
+| Werkzeug | Einsatz |
+|---|---|
+| **NetworkManager** | Desktop-Systeme, WLAN, VPN, dynamische Konfiguration |
+| **systemd-networkd** | Server, reine Ethernet-Systeme |
+| **iproute2** (`ip`) | Manuell, Debugging, temporäre Konfiguration |
+| **ifupdown** (`ifconfig`) | Älteres Tool, auf neuen Systemen nicht mehr empfohlen |
+
+## Netzwerkschnittstellen benennen
+
+Moderne Systeme verwenden **predictable interface names** statt der alten `eth0`-Konvention:
+
+| Präfix | Bedeutung |
+|---|---|
+| `en` | Ethernet |
+| `wl` | WLAN (wireless LAN) |
+| `lo` | Loopback |
+| `enp3s0` | Ethernet, PCI-Bus 3, Slot 0 |
+| `wlp2s0` | WLAN, PCI-Bus 2, Slot 0 |
+
+## Themen dieser Sektion
+
+- [Hardware erkennen](./hardware) — lspci, Kernel-Module, udev
+- [Manuelle Konfiguration](./konfiguration) — iproute2, ip-Befehle

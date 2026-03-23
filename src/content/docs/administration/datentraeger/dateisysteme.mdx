@@ -1,0 +1,110 @@
+---
+title: Dateisysteme
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Ein **Dateisystem** definiert, wie Daten auf einer Partition organisiert und gespeichert
+werden. Es verwaltet Dateinamen, Verzeichnisse, Berechtigungen, Zeitstempel und die
+physische Anordnung der Daten auf dem Datenträger.
+
+## Die wichtigsten Linux-Dateisysteme
+
+### ext4 — bewährter Standard
+
+**ext4** (Fourth Extended Filesystem) ist das Standarddateisystem der meisten
+Distributionen und die Weiterentwicklung von ext2/ext3.
+
+- Journaling (schützt vor Datenverlust bei Absturz)
+- Unterstützt Dateien bis 16 TB, Partitionen bis 1 EB
+- Stabile, gut getestete Implementierung
+- Gute Werkzeugunterstützung (`e2fsprogs`: `fsck.ext4`, `resize2fs`, `tune2fs`)
+
+```bash
+mkfs.ext4 /dev/sdb1
+mkfs.ext4 -L "Daten" /dev/sdb1    # mit Label
+```
+
+### xfs — hohe Performance
+
+**XFS** ist ein hochperformantes 64-Bit-Journaling-Dateisystem, optimiert für
+große Dateien und parallele I/O-Operationen.
+
+- Standard bei RHEL/Fedora
+- Sehr gut bei großen Dateien und hoher Last
+- Kein `resize2fs` — kann nur online vergrößert, **nicht** verkleinert werden
+
+```bash
+mkfs.xfs /dev/sdb1
+mkfs.xfs -L "Daten" /dev/sdb1
+```
+
+### btrfs — Copy-on-Write mit Extras
+
+**Btrfs** (B-Tree Filesystem) bietet moderne Funktionen weit über klassische Dateisysteme hinaus:
+
+- **Snapshots** — Zustand des Dateisystems einfrieren (für Backups, Updates)
+- **Subvolumes** — logische Partitionierung innerhalb des Dateisystems
+- **RAID** — eingebaute Redundanz ohne mdadm
+- **Transparente Kompression** (zstd, lzo, zlib)
+- **Checksums** — Erkennung stiller Datenfehler (Bit Rot)
+
+```bash
+mkfs.btrfs /dev/sdb1
+mkfs.btrfs -L "Daten" /dev/sdb1
+```
+
+Standard bei openSUSE und Fedora (für das Root-Dateisystem).
+
+### Weitere Dateisysteme
+
+| Dateisystem | Einsatz |
+|---|---|
+| **FAT32** / **exFAT** | USB-Sticks, EFI System Partition, Wechselmedien |
+| **NTFS** | Windows-Partitionen lesen/schreiben (`ntfs-3g`) |
+| **tmpfs** | RAM-Dateisystem für `/tmp`, `/run` |
+| **squashfs** | Read-only, komprimiert — für Live-Systeme, Container |
+
+## Dateisystem erstellen (`mkfs`)
+
+```bash
+mkfs.ext4  /dev/sdb1      # ext4
+mkfs.xfs   /dev/sdb1      # xfs
+mkfs.btrfs /dev/sdb1      # btrfs
+mkfs.fat -F 32 /dev/sdb1  # FAT32
+mkswap     /dev/sdb2      # Swap-Partition
+```
+
+<Aside type="caution">
+`mkfs` **überschreibt** alle Daten auf der Partition ohne Rückfrage. Vorher mit
+`lsblk` sicherstellen, dass der richtige Datenträger ausgewählt ist.
+</Aside>
+
+## Dateisystem prüfen und reparieren
+
+```bash
+# ext4 prüfen (Partition darf nicht eingehängt sein)
+fsck.ext4 /dev/sdb1
+fsck.ext4 -f /dev/sdb1    # erzwingen (auch wenn als sauber markiert)
+
+# xfs prüfen
+xfs_repair /dev/sdb1
+
+# btrfs prüfen
+btrfs check /dev/sdb1
+
+# Dateisystem-Informationen
+dumpe2fs /dev/sdb1    # ext4: Label, UUID, Block-Größe
+xfs_info /dev/sdb1    # xfs
+btrfs filesystem show # btrfs
+```
+
+## Geladene Dateisysteme anzeigen
+
+```bash
+cat /proc/filesystems    # alle vom Kernel unterstützten Typen
+lsblk -f                 # Partitionen mit Typ und UUID
+df -hT                   # eingehängte Dateisysteme mit Typ und Auslastung
+```

@@ -1,0 +1,98 @@
+---
+title: Partitionierung
+sidebar:
+  order: 2
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Eine **Partition** ist ein abgegrenzter Bereich auf einem Datenträger. Die Aufteilung
+wird in einer **Partitionstabelle** am Anfang des Datenträgers gespeichert.
+
+## Partitionstabellen: MBR vs. GPT
+
+<Tabs>
+  <TabItem label="GPT (empfohlen)">
+    **GUID Partition Table** — moderner Standard, Teil des UEFI-Standards:
+
+    - Bis zu **128 Partitionen** pro Laufwerk
+    - Unterstützt Datenträger **> 2 TB**
+    - Redundante Kopie der Partitionstabelle am Ende des Laufwerks
+    - Benötigt auf BIOS-Systemen eine kleine **BIOS Boot Partition** (~1 MB)
+    - Auf UEFI-Systemen: **EFI System Partition** (ESP, ~100–500 MB, FAT32)
+  </TabItem>
+  <TabItem label="MBR (legacy)">
+    **Master Boot Record** — älterer Standard (seit 1983):
+
+    - Maximal **4 primäre Partitionen**
+    - Erweiterung: eine Extended Partition mit beliebig vielen logischen Partitionen
+    - Maximale Datenträgergröße: **2 TB**
+    - Bootloader-Code sitzt in den ersten 446 Bytes des MBR
+  </TabItem>
+</Tabs>
+
+## Partitions-Tools
+
+```bash
+# Datenträger und Partitionen anzeigen
+lsblk                    # Baumansicht aller Block-Geräte
+lsblk -f                 # mit Dateisystem-Typ und UUID
+fdisk -l                 # ausführliche Liste mit Partitionstypen
+```
+
+### fdisk — interaktiv
+
+```bash
+sudo fdisk /dev/sdb      # Datenträger /dev/sdb partitionieren
+
+# Wichtige Befehle im fdisk-Menü:
+#   m  — Hilfe anzeigen
+#   p  — Partitionstabelle anzeigen
+#   g  — neue GPT-Tabelle erstellen
+#   o  — neue MBR-Tabelle erstellen
+#   n  — neue Partition erstellen
+#   d  — Partition löschen
+#   t  — Partitionstyp ändern
+#   w  — Änderungen schreiben und beenden
+#   q  — Beenden ohne Speichern
+```
+
+### cfdisk — menügeführt
+
+```bash
+sudo cfdisk /dev/sdb     # grafischeres ncurses-Interface, einfacher für Einsteiger
+```
+
+<Aside type="caution">
+Partitionierungstools arbeiten auf dem **gesamten Laufwerk** (`/dev/sdb`), nicht auf
+einer einzelnen Partition (`/dev/sdb1`). Alle Änderungen werden erst mit **Write**
+(fdisk: `w`) dauerhaft geschrieben.
+</Aside>
+
+## Partitionsgrößen planen
+
+### Server (Empfehlungen aus dem FHS)
+
+| Partition | Größe | Zweck |
+|---|---|---|
+| `/boot` | 500 MB – 1 GB | Kernel und Bootloader |
+| ESP | 100–500 MB | EFI System Partition (UEFI) |
+| Swap | 1× – 2× RAM | Auslagerungsspeicher |
+| `/` (Root) | 20–50 GB | Betriebssystem |
+| `/var` | je nach Dienst | Logs, Mail-Spools, Datenbanken |
+| `/home` | Rest | Benutzerdaten |
+| `/opt` | optional | Zusatzsoftware |
+
+### Laptop (minimales Setup)
+
+| UEFI/GPT | BIOS/MBR |
+|---|---|
+| ESP (500 MB) | Swap |
+| Swap (~RAM-Größe) | / (Root) |
+| / (Root, Rest) | |
+
+<Aside type="tip">
+Moderne Systeme benötigen keine separate `/boot`-Partition mehr — `/boot` kann auf der
+Root-Partition liegen. Ausnahme: verschlüsselte Root-Partition oder sehr spezielle
+Bootloader-Anforderungen.
+</Aside>

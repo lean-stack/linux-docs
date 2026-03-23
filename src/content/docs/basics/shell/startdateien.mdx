@@ -1,0 +1,156 @@
+---
+title: Shell-Startdateien
+sidebar:
+  order: 5
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Beim Start liest die Shell automatisch Konfigurationsdateien ein — welche davon,
+hängt vom [Shell-Modus](./index#shell-modi) ab: **Login-Shell** oder
+**interaktive Shell ohne Login**.
+
+## Login-Shell vs. interaktive Shell
+
+```
+Konsolen-Anmeldung / SSH
+        │
+        ▼
+  Login-Shell            liest: /etc/profile → ~/.bash_profile (oder ~/.profile)
+        │
+        │  (meist: source ~/.bashrc)
+        ▼
+  interaktive Shell      liest: ~/.bashrc
+```
+
+Im Terminal-Emulator (GNOME Terminal, Konsole, iTerm …) wird meist direkt eine
+**interaktive Shell ohne Login** gestartet — also nur `~/.bashrc`, kein `~/.profile`.
+
+<Aside type="note">
+Manche Terminal-Emulatoren (z. B. macOS Terminal, Kitty mit bestimmter Konfiguration)
+starten jedes Fenster als Login-Shell. Dann wird `~/.bash_profile` statt `~/.bashrc`
+gelesen.
+</Aside>
+
+## Die Dateien im Überblick
+
+### `/etc/profile`
+
+Systemweite Konfiguration für alle Login-Shells. Wird von root verwaltet,
+Benutzer können sie nicht ändern. Lädt üblicherweise alle Dateien in `/etc/profile.d/*.sh`.
+
+### `~/.bash_profile`
+
+Benutzerspezifische Konfiguration für **Login-Shells**. Typischer Inhalt:
+Umgebungsvariablen, PATH-Erweiterungen, und das Einlesen von `~/.bashrc`:
+
+```bash
+# ~/.bash_profile
+export PATH="$HOME/.local/bin:$PATH"
+export EDITOR=nano
+
+# ~/.bashrc einlesen, falls vorhanden
+if [ -f ~/.bashrc ]; then
+    source ~/.bashrc
+fi
+```
+
+<Aside type="tip">
+Wenn `~/.bash_profile` nicht existiert, fällt bash auf `~/.bash_login` zurück —
+und wenn auch diese fehlt, auf `~/.profile`. Da `~/.profile` auch von anderen
+Shells (sh, dash) gelesen wird, ist es für shell-agnostische Einstellungen besser geeignet.
+</Aside>
+
+### `~/.profile`
+
+Wie `~/.bash_profile`, aber **shell-agnostisch** — gültig für alle Login-Shells
+(bash, sh, dash, zsh ohne eigene Konfiguration). Kein bash-spezifischer Code hier.
+
+Unter Debian/Ubuntu ist `~/.bash_profile` oft gar nicht vorhanden — stattdessen wird
+`~/.profile` verwendet, das auch `~/.bashrc` einliest.
+
+### `~/.bashrc`
+
+Die wichtigste Konfigurationsdatei für den **täglichen Gebrauch**. Wird bei jeder
+interaktiven Shell-Sitzung geladen. Typischer Inhalt:
+
+```bash
+# ~/.bashrc
+
+# Prompt anpassen
+PS1='\u@\h:\w\$ '
+
+# Aliases
+alias ll='ls -lh'
+alias la='ls -lhA'
+alias ..='cd ..'
+alias grep='grep --color=auto'
+
+# Umgebungsvariablen
+export EDITOR=vim
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+
+# Doppelte Einträge in der History vermeiden
+export HISTCONTROL=ignoredups:erasedups
+
+# PATH erweitern
+export PATH="$HOME/.local/bin:$PATH"
+
+# Bash-Completion laden (falls nicht automatisch)
+if [ -f /etc/bash_completion ]; then
+    source /etc/bash_completion
+fi
+```
+
+### `~/.bash_logout`
+
+Wird beim **Beenden einer Login-Shell** ausgeführt. Selten genutzt — mögliche
+Anwendungsfälle: Terminal leeren, temporäre Dateien aufräumen.
+
+```bash
+# ~/.bash_logout
+clear
+```
+
+## Reihenfolge beim Start
+
+**Login-Shell:**
+1. `/etc/profile`
+2. `~/.bash_profile` **oder** `~/.bash_login` **oder** `~/.profile` (erste gefundene)
+3. (in `~/.bash_profile` typischerweise: `source ~/.bashrc`)
+
+**Interaktive Shell (kein Login):**
+1. `/etc/bash.bashrc` (systemweit, nicht alle Distributionen)
+2. `~/.bashrc`
+
+**Skript (nicht-interaktiv):**
+- Keine der obigen Dateien — nur Variablen aus der Umgebung des Elternprozesses
+
+## Änderungen sofort übernehmen
+
+Änderungen an Startdateien gelten erst für neue Shell-Sitzungen. Um sie in der
+aktuellen Sitzung zu aktivieren:
+
+```bash
+source ~/.bashrc      # ~/.bashrc neu einlesen
+. ~/.bashrc           # gleichbedeutend (POSIX-Schreibweise)
+```
+
+<Aside type="caution">
+`source` führt die Datei im aktuellen Shell-Prozess aus — Variablen werden gesetzt,
+Aliases aktiviert. Aber bereits gesetzte Variablen werden nicht zurückgesetzt, wenn
+sie aus der Datei entfernt wurden. Für einen wirklich sauberen Neustart hilft nur
+eine neue Shell-Sitzung.
+</Aside>
+
+## Typische Aufteilung
+
+| Was | Wohin |
+|---|---|
+| Umgebungsvariablen (`export`) | `~/.bash_profile` / `~/.profile` |
+| Aliases | `~/.bashrc` |
+| Funktionen | `~/.bashrc` |
+| Prompt (`PS1`) | `~/.bashrc` |
+| PATH-Erweiterungen | `~/.bash_profile` (damit auch in GUI-Apps verfügbar) |
+| Shell-Optionen (`shopt`, `set`) | `~/.bashrc` |

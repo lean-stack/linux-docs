@@ -1,0 +1,127 @@
+---
+title: Einhängen (Mount)
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Unter Linux gibt es **einen** Verzeichnisbaum — Partitionen, USB-Sticks oder
+Netzlaufwerke werden nicht als eigene Laufwerksbuchstaben sichtbar (wie `C:`, `D:`
+unter Windows), sondern an einem **Einhängepunkt** (Mountpoint) in den Verzeichnisbaum
+eingebunden.
+
+```
+/
+├── home/        ← könnte eine eigene Partition sein
+├── var/         ← könnte eine eigene Partition sein
+└── mnt/
+    └── usb/     ← USB-Stick eingehängt
+```
+
+## Temporär einhängen mit `mount`
+
+```bash
+# Syntax: mount [Optionen] Gerät Einhängepunkt
+mount /dev/sdb1 /mnt
+
+# Mit explizitem Dateisystem-Typ
+mount -t ext4 /dev/sdb1 /mnt
+
+# Read-only einhängen
+mount -o ro /dev/sdb1 /mnt
+
+# Alle aktuell eingehängten Dateisysteme anzeigen
+mount
+# oder übersichtlicher:
+findmnt
+```
+
+Gerät identifizieren:
+
+```bash
+lsblk -f               # Partitionen mit UUID und Label
+blkid /dev/sdb1        # UUID und Typ einer Partition
+```
+
+## Aushängen mit `umount`
+
+```bash
+umount /mnt            # über Einhängepunkt (bevorzugt)
+umount /dev/sdb1       # über Gerätepfad
+
+# Wenn "device is busy": wer nutzt das Dateisystem?
+lsof +D /mnt           # offene Dateien anzeigen
+fuser -m /mnt          # Prozesse mit Zugriff
+```
+
+<Aside type="caution">
+Niemals einen USB-Stick oder eine externe Festplatte abziehen, ohne vorher `umount`
+auszuführen. Gepufferte Schreibvorgänge könnten noch nicht auf dem Medium sein.
+</Aside>
+
+## Dauerhaft einhängen mit `/etc/fstab`
+
+Die Datei `/etc/fstab` (Filesystem Table) legt fest, welche Dateisysteme beim
+Systemstart automatisch eingehängt werden:
+
+```
+# Gerät          Einhängepunkt  Typ    Optionen    dump  pass
+UUID=abc123...   /              ext4   defaults     0     1
+UUID=def456...   /home          ext4   defaults     0     2
+UUID=ghi789...   none           swap   sw           0     0
+/dev/sdb1        /mnt/daten     xfs    defaults     0     0
+```
+
+<Aside type="tip">
+Statt `/dev/sdb1` immer **UUIDs** oder **Labels** verwenden — Gerätepfade können sich
+nach einem Neustart ändern (z. B. wenn ein weiterer Datenträger hinzukommt).
+
+UUIDs ermitteln: `blkid` oder `lsblk -f`
+</Aside>
+
+### Spalten in `/etc/fstab`
+
+| Spalte | Bedeutung |
+|---|---|
+| Gerät | UUID=..., LABEL=..., /dev/... |
+| Einhängepunkt | Verzeichnis im Baum |
+| Typ | ext4, xfs, btrfs, swap, tmpfs, ... |
+| Optionen | `defaults`, `ro`, `noexec`, `noatime`, ... |
+| dump | Backup mit `dump` (0 = nein, 1 = ja) — heute meist 0 |
+| pass | `fsck`-Reihenfolge (0 = nicht prüfen, 1 = Root, 2 = andere) |
+
+### fstab testen ohne Neustart
+
+```bash
+# Alle Einträge aus /etc/fstab einhängen
+mount -a
+
+# Einzelnen Eintrag nach Einhängepunkt einhängen
+mount /mnt/daten
+```
+
+## systemd Mount Units
+
+systemd kann Dateisysteme auch über `.mount`-Unit-Dateien verwalten.
+Der Name der Unit leitet sich aus dem Einhängepunkt ab:
+`/home/daten` → `home-daten.mount`
+
+```ini
+# /etc/systemd/system/mnt-daten.mount
+[Unit]
+Description=Datenfestplatte
+
+[Mount]
+What=/dev/disk/by-uuid/abc123...
+Where=/mnt/daten
+Type=ext4
+Options=defaults
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl enable --now mnt-daten.mount
+```

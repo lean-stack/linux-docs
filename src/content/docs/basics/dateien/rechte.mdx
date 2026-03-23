@@ -1,0 +1,160 @@
+---
+title: Dateirechte
+sidebar:
+  order: 7
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Jede Datei und jedes Verzeichnis in Linux gehört einem **Benutzer** (Owner) und einer **Gruppe**.
+Über ein einfaches Rechtesystem wird festgelegt, wer lesen, schreiben und ausführen darf.
+
+## Rechte in der Ausgabe von `ls -l`
+
+```bash
+$ ls -l
+-rw-r--r--  1 micha users  1234 Mar 20 10:00 bericht.txt
+drwxr-x---  2 micha users  4096 Mar 20 09:00 projekte/
+lrwxrwxrwx  1 micha users    11 Mar 20 08:00 link -> bericht.txt
+```
+
+Das erste Zeichen zeigt den **Dateityp**:
+
+| Zeichen | Bedeutung |
+|---|---|
+| `-` | reguläre Datei |
+| `d` | Verzeichnis (directory) |
+| `l` | symbolischer Link |
+
+Die folgenden neun Zeichen sind die **Rechte** — drei Gruppen zu je drei Zeichen:
+
+```
+r w x  r - x  r - -
+─────  ─────  ─────
+owner  group  others
+```
+
+| Zeichen | Name | Bedeutung bei Dateien | Bedeutung bei Verzeichnissen |
+|---|---|---|---|
+| `r` | read | Datei lesen | Inhalt auflisten (`ls`) |
+| `w` | write | Datei schreiben | Dateien anlegen/löschen |
+| `x` | execute | Datei ausführen | Verzeichnis betreten (`cd`) |
+| `-` | — | Recht nicht vergeben | Recht nicht vergeben |
+
+Im obigen Beispiel bedeutet `-rw-r--r--`:
+- **Owner** (`micha`): lesen und schreiben (`rw-`)
+- **Group** (`users`): nur lesen (`r--`)
+- **Others**: nur lesen (`r--`)
+
+## Standardrechte mit `umask`
+
+Wenn eine neue Datei oder ein Verzeichnis angelegt wird, bestimmt die **umask**,
+welche Rechte *nicht* vergeben werden. Sie ist eine Art Subtraktionsmaske.
+
+```bash
+$ umask
+0022
+```
+
+Eine umask von `022` bedeutet: von den maximalen Rechten (`666` für Dateien, `777` für
+Verzeichnisse) werden `022` abgezogen:
+
+| | Dateien | Verzeichnisse |
+|---|---|---|
+| Maximum | `666` (rw-rw-rw-) | `777` (rwxrwxrwx) |
+| umask | `022` | `022` |
+| Ergebnis | `644` (rw-r--r--) | `755` (rwxr-xr-x) |
+
+Die umask lässt sich für die aktuelle Shell-Sitzung ändern:
+
+```bash
+umask 027    # group: kein write, others: keine Rechte
+```
+
+## Rechte ändern mit `chmod`
+
+`chmod` (**ch**ange **mod**e) ändert die Rechte einer Datei oder eines Verzeichnisses.
+
+### Symbolische Schreibweise
+
+```bash
+chmod u+x skript.sh      # owner: execute hinzufügen
+chmod g-w bericht.txt    # group: write entfernen
+chmod o=r bericht.txt    # others: nur read (alles andere entfernen)
+chmod a+x skript.sh      # alle (all): execute hinzufügen
+chmod ug+rw shared.txt   # owner und group: read+write hinzufügen
+```
+
+Kürzel für die Benutzerklassen:
+
+| Kürzel | Bedeutung |
+|---|---|
+| `u` | user (owner) |
+| `g` | group |
+| `o` | others |
+| `a` | all (u+g+o) |
+
+Operatoren: `+` hinzufügen, `-` entfernen, `=` exakt setzen.
+
+Wird **keine Benutzerklasse** angegeben, wirkt die `umask` als Filter:
+
+```bash
+chmod +x skript.sh    # setzt x nur für Klassen, die umask nicht blockiert
+chmod a+x skript.sh   # setzt x für alle — umask wird ignoriert
+```
+
+Mit der Standard-umask `022` ist `chmod +x` gleichbedeutend mit `chmod a+x`, da `022`
+keine Execute-Bits blockiert. Mit umask `027` hingegen würde `chmod +x` das Execute-Bit
+für *others* **nicht** setzen — da `027` alle Rechte für Others sperrt.
+
+### Oktalschreibweise
+
+Jede Dreiergruppe lässt sich als Zahl ausdrücken: `r`=4, `w`=2, `x`=1.
+
+```
+rwx = 4+2+1 = 7
+rw- = 4+2+0 = 6
+r-x = 4+0+1 = 5
+r-- = 4+0+0 = 4
+--- = 0+0+0 = 0
+```
+
+Typische Kombinationen:
+
+```bash
+chmod 755 skript.sh      # rwxr-xr-x  — ausführbares Skript
+chmod 644 bericht.txt    # rw-r--r--  — normale Textdatei
+chmod 600 ~/.ssh/id_rsa  # rw-------  — privater Schlüssel
+chmod 700 ~/.ssh         # rwx------  — privates Verzeichnis
+```
+
+Für Verzeichnisse gilt `-R` um rekursiv alle Inhalte einzuschließen:
+
+```bash
+chmod -R 755 /var/www/html
+```
+
+<Aside type="caution">
+`chmod 777` gibt **allen** Lese-, Schreib- und Ausführungsrechte. Das ist fast immer falsch
+und öffnet Sicherheitslücken — insbesondere auf Webservern. Lieber gezielt die benötigten
+Rechte vergeben.
+</Aside>
+
+## Eigentümer ändern mit `chown`
+
+`chown` (**ch**ange **own**er) ändert den Eigentümer und/oder die Gruppe einer Datei.
+Dieser Befehl erfordert in der Regel Root-Rechte.
+
+```bash
+chown micha bericht.txt          # nur Owner ändern
+chown micha:users bericht.txt    # Owner und Gruppe ändern
+chown :users bericht.txt         # nur Gruppe ändern (wie chgrp)
+chown -R www-data:www-data /var/www   # rekursiv
+```
+
+<Aside type="note">
+Die hier beschriebenen Rechte sind die klassischen **POSIX-Rechte**. Darüber hinaus gibt es
+erweiterte Konzepte: besondere Bits (SetUID, SetGID, Sticky-Bit) und ACLs für feingranulare
+Zugriffssteuerung — beschrieben unter
+[Erweiterte Rechte](../../../administration/benutzer/erweiterte-rechte).
+</Aside>

@@ -1,0 +1,167 @@
+---
+title: Paketverwaltung in der Praxis
+sidebar:
+  order: 2
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Ein **Paket** ist ein komprimiertes Archiv mit Programmdateien, Metadaten (Name, Version,
+Beschreibung) und Abhängigkeiten. **Repositories** sind Paketquellen — in der Regel
+HTTP-Server mit einer signierten Paketliste.
+
+Die wichtigsten Paketverwaltungssysteme:
+
+| Distribution | Format | Tool |
+|---|---|---|
+| Debian, Ubuntu | `.deb` | `apt`, `dpkg` |
+| RHEL, Fedora, CentOS | `.rpm` | `dnf` (früher `yum`) |
+| openSUSE | `.rpm` | `zypper` |
+| Arch Linux | `.pkg.tar.zst` | `pacman` |
+
+## Grundlegende Workflows
+
+<Tabs>
+  <TabItem label="Debian/Ubuntu (apt)">
+    ```bash
+    # Paketliste aktualisieren
+    apt update
+
+    # Alle installierten Pakete aktualisieren
+    apt upgrade
+
+    # Paket suchen
+    apt search nginx
+
+    # Paket installieren
+    apt install nginx
+
+    # Paket entfernen (Konfiguration bleibt)
+    apt remove nginx
+
+    # Paket vollständig entfernen (inkl. Konfiguration)
+    apt purge nginx
+
+    # Nicht mehr benötigte Pakete entfernen
+    apt autoremove
+
+    # Informationen zu einem Paket anzeigen
+    apt show nginx
+    ```
+  </TabItem>
+  <TabItem label="RHEL/Fedora (dnf)">
+    ```bash
+    # Paketliste aktualisieren
+    dnf makecache
+
+    # Alle installierten Pakete aktualisieren
+    dnf update
+
+    # Paket suchen
+    dnf search nginx
+
+    # Paket installieren
+    dnf install nginx
+
+    # Paket entfernen
+    dnf remove nginx
+
+    # Nicht mehr benötigte Pakete entfernen
+    dnf autoremove
+
+    # Informationen zu einem Paket anzeigen
+    dnf info nginx
+    ```
+  </TabItem>
+  <TabItem label="openSUSE (zypper)">
+    ```bash
+    # Paketliste aktualisieren
+    zypper refresh
+
+    # Alle installierten Pakete aktualisieren
+    zypper update
+
+    # Paket suchen
+    zypper search nginx
+
+    # Paket installieren
+    zypper install nginx
+
+    # Paket entfernen
+    zypper remove nginx
+
+    # Informationen zu einem Paket anzeigen
+    zypper info nginx
+    ```
+  </TabItem>
+</Tabs>
+
+## Repository-Konfiguration
+
+<Tabs>
+  <TabItem label="Debian/Ubuntu">
+    Quellen werden in `/etc/apt/sources.list` und `/etc/apt/sources.list.d/*.list` konfiguriert:
+
+    ```
+    deb https://deb.debian.org/debian bookworm main contrib non-free
+    deb https://security.debian.org/debian-security bookworm-security main
+    ```
+
+    Externe Repository einbinden (Beispiel Docker):
+    ```bash
+    # GPG-Schlüssel hinzufügen
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+    # Repository eintragen
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] \
+      https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+      | sudo tee /etc/apt/sources.list.d/docker.list
+
+    sudo apt update
+    sudo apt install docker-ce
+    ```
+  </TabItem>
+  <TabItem label="RHEL/Fedora">
+    Repository-Dateien liegen in `/etc/yum.repos.d/*.repo`:
+
+    ```ini
+    [docker-ce-stable]
+    name=Docker CE Stable
+    baseurl=https://download.docker.com/linux/fedora/$releasever/$basearch/stable
+    enabled=1
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/fedora/gpg
+    ```
+
+    Oder direkt mit `dnf config-manager`:
+    ```bash
+    dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    Repository hinzufügen:
+    ```bash
+    zypper addrepo https://download.opensuse.org/repositories/... repo-name
+    zypper refresh
+    ```
+  </TabItem>
+</Tabs>
+
+## Installierte Pakete untersuchen
+
+```bash
+# Debian/Ubuntu
+dpkg -l                    # alle installierten Pakete auflisten
+dpkg -L nginx              # Dateien eines installierten Pakets anzeigen
+dpkg -S /usr/sbin/nginx    # zu welchem Paket gehört eine Datei?
+
+# RHEL/Fedora
+rpm -qa                    # alle installierten Pakete
+rpm -ql nginx              # Dateien eines Pakets
+rpm -qf /usr/sbin/nginx    # zu welchem Paket gehört eine Datei?
+```
+
+<Aside type="tip">
+`apt list --installed` (Debian) bzw. `dnf list installed` (RHEL) geben eine
+übersichtlichere Liste als `dpkg -l` bzw. `rpm -qa`.
+</Aside>

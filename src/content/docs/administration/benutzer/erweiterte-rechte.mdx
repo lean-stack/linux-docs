@@ -1,0 +1,193 @@
+---
+title: Erweiterte Rechte
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Neben den klassischen [POSIX-Rechten](../../../basics/dateien/rechte) (rwx für Owner, Group, Others)
+gibt es drei besondere Bits sowie ACLs für feinere Zugriffssteuerung.
+
+## Besondere Bits
+
+### SetUID (SUID)
+
+Wenn das **SetUID-Bit** auf einer ausführbaren Datei gesetzt ist, läuft das Programm
+mit den Rechten des **Datei-Eigentümers** — nicht mit den Rechten des aufrufenden Benutzers.
+
+```bash
+ls -l /usr/bin/passwd
+-rwsr-xr-x 1 root root 68208 /usr/bin/passwd
+#   ↑
+#   s statt x beim Owner = SUID gesetzt
+```
+
+`passwd` gehört root und hat SUID gesetzt — jeder Benutzer kann damit sein eigenes
+Passwort ändern, obwohl `/etc/shadow` nur für root schreibbar ist.
+
+```bash
+chmod u+s programm      # SUID setzen (symbolisch)
+chmod 4755 programm     # SUID setzen (oktal — führende 4)
+chmod u-s programm      # SUID entfernen
+```
+
+<Aside type="caution">
+SUID-Programme sind potenzielle Angriffspunkte: Ein Fehler im Programm könnte zur
+[Privilege Escalation](https://en.wikipedia.org/wiki/Privilege_escalation) führen.
+SUID nur für absolut notwendige Programme setzen.
+
+Alle SUID-Dateien im System finden:
+```bash
+find / -perm -4000 -type f 2>/dev/null
+```
+</Aside>
+
+### SetGID (SGID)
+
+Das **SetGID-Bit** wirkt unterschiedlich — je nachdem ob es auf einer Datei oder
+einem Verzeichnis gesetzt ist.
+
+**Auf ausführbaren Dateien:** Das Programm läuft mit der **Gruppe der Datei** statt
+der primären Gruppe des aufrufenden Benutzers.
+
+```bash
+ls -l /usr/bin/write
+-rwxr-sr-x 1 root tty 14736 /usr/bin/write
+#       ↑
+#       s statt x bei der Group = SGID gesetzt
+```
+
+**Auf Verzeichnissen:** Neue Dateien und Unterverzeichnisse erben automatisch die
+**Gruppe des Verzeichnisses** — nicht die primäre Gruppe des Erstellers. Praktisch
+für gemeinsam genutzte Verzeichnisse:
+
+```bash
+mkdir /srv/projekt
+chown :entwicklung /srv/projekt
+chmod g+s /srv/projekt     # SGID auf Verzeichnis setzen
+
+# Jetzt erhalten alle neuen Dateien in /srv/projekt automatisch die Gruppe "entwicklung"
+```
+
+```bash
+chmod g+s verzeichnis      # SGID setzen (symbolisch)
+chmod 2755 verzeichnis     # SGID setzen (oktal — führende 2)
+```
+
+### Sticky-Bit
+
+Das **Sticky-Bit** auf einem Verzeichnis verhindert, dass Benutzer Dateien anderer
+Benutzer löschen — auch wenn sie Schreibrecht auf das Verzeichnis haben.
+
+```bash
+ls -ld /tmp
+drwxrwxrwt 1 root root 4096 /tmp
+#        ↑
+#        t statt x bei Others = Sticky-Bit gesetzt
+```
+
+`/tmp` ist für alle schreibbar — ohne Sticky-Bit könnte jeder die Dateien anderer
+löschen. Mit Sticky-Bit darf nur der Eigentümer (oder root) eine Datei löschen.
+
+```bash
+chmod +t /srv/shared       # Sticky-Bit setzen (symbolisch)
+chmod 1777 /srv/shared     # Sticky-Bit setzen (oktal — führende 1)
+chmod -t /srv/shared       # Sticky-Bit entfernen
+```
+
+### Übersicht: Oktal-Präfixe
+
+| Bit | Oktal | Symbolisch | Wirkung |
+|---|---|---|---|
+| SetUID | `4xxx` | `u+s` | Datei läuft als Eigentümer |
+| SetGID | `2xxx` | `g+s` | Datei läuft als Gruppe / Verzeichnis: Gruppe vererben |
+| Sticky | `1xxx` | `+t` | Nur Eigentümer kann eigene Dateien löschen |
+| Kombination | `6xxx` | `ug+s` | SetUID + SetGID |
+
+In `ls -l` erscheint ein **großes S / T** (statt s / t), wenn das zugehörige
+Execute-Bit **nicht** gesetzt ist — ein Hinweis auf eine wahrscheinlich fehlerhafte Konfiguration.
+
+## ACLs — Access Control Lists
+
+Die klassischen POSIX-Rechte kennen nur drei Klassen (Owner, Group, Others). ACLs
+ermöglichen feingranulare Berechtigungen für **beliebige Benutzer und Gruppen**.
+
+### Voraussetzung
+
+Das Dateisystem muss mit ACL-Unterstützung eingehängt sein. Bei ext4 und xfs ist
+ACL-Unterstützung heute standardmäßig aktiv. Prüfen:
+
+```bash
+tune2fs -l /dev/sda1 | grep "Default mount options"
+# Default mount options: acl
+```
+
+### ACLs anzeigen
+
+```bash
+getfacl datei.txt
+```
+
+Beispielausgabe:
+```
+# file: datei.txt
+# owner: micha
+# group: users
+user::rw-
+user:anna:r--
+group::r--
+group:entwicklung:rw-
+mask::rw-
+other::r--
+```
+
+### ACLs setzen
+
+```bash
+# Einzelnen Benutzer berechtigen
+setfacl -m u:anna:rw datei.txt
+
+# Gruppe berechtigen
+setfacl -m g:entwicklung:rw datei.txt
+
+# Standard-ACL für ein Verzeichnis (vererbt sich auf neue Dateien)
+setfacl -d -m g:entwicklung:rw /srv/projekt
+
+# ACL-Eintrag entfernen
+setfacl -x u:anna datei.txt
+
+# Alle ACLs entfernen
+setfacl -b datei.txt
+```
+
+### Die Maske (`mask`)
+
+Die **mask** definiert die maximalen Rechte für Benutzer (außer Owner) und Gruppen.
+`getfacl` zeigt die effektiven Rechte nach Anwendung der Maske:
+
+```bash
+setfacl -m m::r datei.txt    # Maske auf read-only setzen
+# Damit können anna und gruppe "entwicklung" nicht mehr schreiben,
+# auch wenn ihre ACL-Einträge rw- enthalten
+```
+
+<Aside type="tip">
+ACLs sind erkennbar an einem `+` am Ende der Rechte-Spalte in `ls -l`:
+
+```bash
+ls -l datei.txt
+-rw-rw-r--+ 1 micha users 0 Mar 20 10:00 datei.txt
+#          ↑
+#          + = ACL vorhanden
+```
+</Aside>
+
+### ACLs und Backup
+
+Viele Backup-Tools ignorieren ACLs standardmäßig. Mit `tar` ACLs erhalten:
+
+```bash
+tar --acls -czf backup.tar.gz /srv/projekt
+tar --acls -xzf backup.tar.gz
+```

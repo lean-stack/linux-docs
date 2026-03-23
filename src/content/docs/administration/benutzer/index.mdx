@@ -1,0 +1,33 @@
+---
+title: Benutzerverwaltung
+sidebar:
+  order: 1
+  label: Einführung
+---
+
+Linux ist ein **Mehrbenutzersystem**. Jeder Prozess, jede Datei und jedes Verzeichnis
+gehört einem Benutzer und einer Gruppe. Die Benutzerverwaltung ist daher eine der
+grundlegendsten Administrationsaufgaben.
+
+## Lokale Benutzer und Gruppen
+
+Lokale Benutzer werden über einfache Textdateien verwaltet:
+
+| Datei | Inhalt |
+|---|---|
+| `/etc/passwd` | Liste aller lokalen Benutzer |
+| `/etc/shadow` | Passwort-Hashes (nur für root lesbar) |
+| `/etc/group` | Liste aller lokalen Gruppen |
+| `/etc/gshadow` | Gruppenpasswörter (heute selten genutzt) |
+
+Zu jedem Benutzer gehören:
+- **Login-Name** und **UID** (numerische ID)
+- **GID** (primäre Gruppe)
+- **Heimatverzeichnis** und **Standard-Shell**
+- **Passwort** (als Hash in `/etc/shadow`)
+- **Zusätzliche Gruppen** (in `/etc/group`)
+
+## Themen dieser Sektion
+
+- [Benutzer & Gruppen verwalten](./verwaltung) — useradd, usermod, userdel, passwd
+- [sudo & Root-Zugang](./sudo) — su, sudo, visudo

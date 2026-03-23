@@ -1,0 +1,89 @@
+---
+title: Bootloader — GRUB
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Der Bootloader ist das erste vollständige Programm, das die Firmware startet. Seine
+Aufgabe: den Linux-Kernel in den Arbeitsspeicher laden und mit den richtigen Parametern
+starten. Auf Linux-Systemen ist **GRUB** (GRand Unified Bootloader) am weitesten verbreitet.
+
+## GRUB installieren
+
+GRUB wird typischerweise einmalig bei der Distribution-Installation eingerichtet.
+Bei Bedarf kann es manuell installiert werden:
+
+```bash
+# UEFI-System
+grub-install --target=x86_64-efi \
+             --efi-directory=/boot/efi \
+             --bootloader-id=GRUB
+
+# BIOS-System
+grub-install --target=i386-pc /dev/sda
+```
+
+<Aside type="caution">
+Den richtigen Datenträger angeben — bei BIOS z. B. `/dev/sda`, **nicht** `/dev/sda1`.
+GRUB schreibt seinen Code in den MBR des gesamten Laufwerks.
+</Aside>
+
+## GRUB konfigurieren
+
+Die Konfiguration erfolgt über `/etc/default/grub` — hier die wichtigsten Parameter:
+
+```bash
+# Timeout in Sekunden (0 = sofort booten, -1 = warten bis Auswahl)
+GRUB_TIMEOUT=5
+
+# Standard-Eintrag (0 = erster, oder Name des Eintrags)
+GRUB_DEFAULT=0
+
+# Kernel-Parameter (z. B. für Debugging oder Stille)
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"
+GRUB_CMDLINE_LINUX=""
+
+# Bootmenü immer anzeigen (auch ohne andere Betriebssysteme)
+GRUB_DISABLE_OS_PROBER=false
+```
+
+Nach Änderungen muss die eigentliche GRUB-Konfigurationsdatei neu generiert werden:
+
+```bash
+# Debian/Ubuntu
+update-grub
+
+# RHEL/Fedora/Arch
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# UEFI-Systeme oft:
+grub-mkconfig -o /boot/efi/EFI/GRUB/grub.cfg
+```
+
+## GRUB-Menü im laufenden Betrieb
+
+```bash
+# Beim nächsten Start einen bestimmten Eintrag booten
+grub-reboot "Ubuntu, with Linux 6.1.0-21-amd64 (recovery mode)"
+
+# Einträge anzeigen
+grub-editenv list
+```
+
+## Weitere Bootloader
+
+Neben GRUB gibt es Alternativen:
+
+| Bootloader | Einsatzgebiet |
+|---|---|
+| **systemd-boot** (früher gummiboot) | Einfacher UEFI-only Bootloader, von systemd |
+| **rEFInd** | Grafischer UEFI-Bootmanager, gut für Multi-Boot |
+| **SYSLINUX** | Leichtgewichtig, oft auf Live-Systemen und USB-Sticks |
+| **U-Boot** | Embedded Systems und ARM-Geräte (Raspberry Pi etc.) |
+
+<Aside type="tip">
+`systemd-boot` ist eine schlankere Alternative zu GRUB auf reinen UEFI-Systemen.
+Er wird z. B. von Pop!_OS und Fedora (optional) verwendet.
+</Aside>

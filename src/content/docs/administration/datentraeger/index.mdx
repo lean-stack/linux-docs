@@ -1,0 +1,36 @@
+---
+title: Datenträger
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+Die Verwaltung von Datenträgern umfasst vier aufeinander aufbauende Schritte:
+
+```
+┌─────────────────────────┐
+│  1. Partitionieren      │  Datenträger in Bereiche aufteilen
+│     fdisk, cfdisk       │  MBR oder GPT-Partitionstabelle
+└──────────┬──────────────┘
+           │
+┌──────────▼──────────────┐
+│  2. Formatieren         │  Dateisystem erstellen
+│     mkfs.ext4, mkfs.xfs │  ext4, xfs, btrfs, ...
+└──────────┬──────────────┘
+           │
+┌──────────▼──────────────┐
+│  3. Einhängen (Mount)   │  Partition in den Verzeichnisbaum einbinden
+│     mount, /etc/fstab   │  temporär oder dauerhaft
+└──────────┬──────────────┘
+           │
+┌──────────▼──────────────┐
+│  4. Verwenden           │  Dateien lesen/schreiben
+└─────────────────────────┘
+```
+
+## Themen dieser Sektion
+
+- [Partitionierung](./partitionierung) — MBR, GPT, fdisk, cfdisk
+- [Dateisysteme](./dateisysteme) — ext4, xfs, btrfs, mkfs
+- [Einhängen](./einhaengen) — mount, umount, /etc/fstab
+- [Praxis-Workflow](./praxis) — komplettes Beispiel von lsblk bis mount

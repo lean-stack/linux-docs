@@ -1,0 +1,162 @@
+---
+title: Uhrzeit
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Linux-Systeme verwalten zwei Uhren: die **Hardware-Uhr** (RTC — Real Time Clock, läuft im BIOS/UEFI auch ohne Strom) und die **System-Uhr** (im Kernel, wird beim Booten aus der Hardware-Uhr gesetzt).
+
+```
+Hardware-Uhr (RTC)
+       │
+       │  beim Booten einlesen
+       ▼
+System-Uhr (Kernel)
+       │
+       │  NTP-Synchronisation (laufend)
+       ▼
+   korrekte Zeit
+```
+
+## Zeitzone
+
+Die Zeitzone wird über einen Symlink gesteuert:
+
+```bash
+ls -la /etc/localtime
+# /etc/localtime -> /usr/share/zoneinfo/Europe/Berlin
+```
+
+Verfügbare Zeitzonen liegen in `/usr/share/zoneinfo/`.
+
+### Zeitzone setzen
+
+```bash
+# Mit timedatectl (empfohlen)
+timedatectl list-timezones | grep Europe
+sudo timedatectl set-timezone Europe/Berlin
+
+# Manuell (Symlink setzen)
+sudo ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+```
+
+## timedatectl
+
+`timedatectl` ist das systemd-Werkzeug für Uhrzeit, Zeitzone und NTP:
+
+```bash
+timedatectl                        # aktuellen Status anzeigen
+```
+
+Beispielausgabe:
+```
+               Local time: So 2026-03-22 14:30:00 CET
+           Universal time: So 2026-03-22 13:30:00 UTC
+                 RTC time: So 2026-03-22 13:30:00
+                Time zone: Europe/Berlin (CET, +0100)
+System clock synchronized: yes
+              NTP service: active
+          RTC in local TZ: no
+```
+
+```bash
+# Uhrzeit manuell setzen (NTP muss deaktiviert sein)
+sudo timedatectl set-ntp false
+sudo timedatectl set-time "2026-03-22 14:30:00"
+
+# NTP wieder aktivieren
+sudo timedatectl set-ntp true
+
+# RTC-Modus umschalten (UTC empfohlen)
+sudo timedatectl set-local-rtc 0    # RTC in UTC speichern (Standard)
+sudo timedatectl set-local-rtc 1    # RTC in Lokalzeit (nur für Windows-Dual-Boot)
+```
+
+<Aside type="tip">
+Auf Systemen, die nur Linux nutzen, sollte die Hardware-Uhr immer in **UTC** laufen (`RTC in local TZ: no`). Windows hingegen speichert die RTC in Lokalzeit — auf Dual-Boot-Systemen entweder Windows auf UTC umstellen oder Linux auf Lokalzeit.
+</Aside>
+
+## hwclock
+
+`hwclock` liest und schreibt die Hardware-Uhr direkt:
+
+```bash
+hwclock                            # Hardware-Uhr lesen (Lokalzeit)
+hwclock --utc                      # Hardware-Uhr lesen (UTC interpretieren)
+hwclock --show --verbose           # Details anzeigen
+
+# Synchronisation
+sudo hwclock --systohc             # System-Uhr → Hardware-Uhr schreiben
+sudo hwclock --hctosys             # Hardware-Uhr → System-Uhr lesen
+```
+
+## NTP — Netzwerkzeit
+
+NTP (Network Time Protocol) synchronisiert die System-Uhr über das Netzwerk mit Zeitservern.
+
+### systemd-timesyncd (Standard)
+
+Auf den meisten modernen Distributionen ist `systemd-timesyncd` vorinstalliert — ein einfacher NTP-Client:
+
+```bash
+# Status prüfen
+systemctl status systemd-timesyncd
+timedatectl show-timesync          # Synchronisations-Details
+
+# Konfiguration: /etc/systemd/timesyncd.conf
+# [Time]
+# NTP=0.de.pool.ntp.org 1.de.pool.ntp.org
+# FallbackNTP=ntp.ubuntu.com
+```
+
+Nach Änderung an `timesyncd.conf`:
+
+```bash
+sudo systemctl restart systemd-timesyncd
+```
+
+### chrony (Server-Empfehlung)
+
+Für Server oder Systeme, die selbst als NTP-Server fungieren sollen, ist `chrony` besser geeignet:
+
+```bash
+# Installation
+sudo apt install chrony        # Debian/Ubuntu
+sudo dnf install chrony        # RHEL/Fedora
+
+# Status
+chronyc tracking               # Synchronisations-Status
+chronyc sources -v             # verwendete Zeitquellen
+```
+
+Konfiguration in `/etc/chrony.conf`:
+
+```
+pool 0.de.pool.ntp.org iburst
+pool 1.de.pool.ntp.org iburst
+driftfile /var/lib/chrony/drift
+makestep 1.0 3
+rtcsync
+```
+
+<Aside type="tip">
+`systemd-timesyncd` und `chronyd` dürfen nicht gleichzeitig aktiv sein — beide versuchen, die Systemuhr zu steuern. Vor der Installation von chrony: `sudo systemctl disable --now systemd-timesyncd`.
+</Aside>
+
+## date
+
+Das klassische Werkzeug zur Anzeige und Ausgabeformatierung:
+
+```bash
+date                               # aktuelle Zeit (Lokalzeit)
+date -u                            # UTC-Zeit
+date +"%Y-%m-%d %H:%M:%S"         # formatierte Ausgabe
+date +%s                           # Unix-Timestamp (Sekunden seit 1970-01-01)
+
+# Vergangene/zukünftige Zeiten berechnen
+date -d "yesterday"
+date -d "next monday"
+date -d "@1711108800"              # Unix-Timestamp → lesbares Datum
+```

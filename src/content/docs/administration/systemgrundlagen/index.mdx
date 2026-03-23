@@ -1,0 +1,28 @@
+---
+title: Systemgrundlagen
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+import { CardGrid, Card } from '@astrojs/starlight/components';
+
+Systemgrundlagen umfassen Einstellungen, die das Verhalten des gesamten Systems beeinflussen — unabhängig von installierten Diensten oder Benutzeranwendungen.
+
+<CardGrid>
+  <Card title="Lokalisierung" icon="translate">
+    Sprache, Zeichenkodierung und regionale Formate — Locale-Variablen, `locale-gen`, `localectl`
+  </Card>
+  <Card title="Uhrzeit" icon="clock">
+    Hardware-Uhr, Zeitzone, NTP-Synchronisation — `hwclock`, `timedatectl`, `systemd-timesyncd`
+  </Card>
+  <Card title="Tastatur" icon="laptop">
+    Tastatur-Layout für virtuelle Konsole und grafischen Desktop — `localectl`, `/etc/vconsole.conf`
+  </Card>
+</CardGrid>
+
+## Themen dieser Sektion
+
+- [Lokalisierung](./lokalisierung) — Locale-Variablen, `/etc/locale.conf`, `localectl`
+- [Uhrzeit](./zeit) — `hwclock`, `timedatectl`, NTP
+- [Tastatur](./tastatur) — vconsole, X11/Wayland

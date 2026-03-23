@@ -1,0 +1,59 @@
+---
+title: Paketverwaltung
+sidebar:
+  order: 1
+  label: Einführung
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Software wird unter Linux fast ausschließlich über **Pakete** installiert — komprimierte
+Archive, die neben den eigentlichen Programmdateien auch Metadaten, Abhängigkeiten und
+Installationsanweisungen enthalten.
+
+## Installationsquellen — in der richtigen Reihenfolge
+
+Woher Software bezogen wird, hat direkten Einfluss auf Sicherheit und Wartbarkeit.
+Die empfohlene Reihenfolge:
+
+### 1. Offizielle Repositories der Distribution (bevorzugt)
+
+Pakete aus den offiziellen Quellen wurden von der Distribution geprüft, signiert und
+werden mit Sicherheitsupdates versorgt. Das ist der **Normalfall**.
+
+```bash
+apt install nginx       # Debian/Ubuntu
+dnf install nginx       # RHEL/Fedora
+zypper install nginx    # openSUSE
+```
+
+### 2. Repositories des Software-Herstellers
+
+Wenn eine neuere Version benötigt wird als in den offiziellen Quellen verfügbar
+(z. B. aktuelle Docker-Version), bieten viele Hersteller eigene Repositories an.
+Diese werden einmalig eingerichtet und danach wie offizielle Quellen behandelt.
+
+### 3. Einzelne Paketdateien aus dem Internet
+
+Als Notlösung können `.deb`- oder `.rpm`-Dateien direkt vom Hersteller heruntergeladen
+werden. Nachteil: **keine automatischen Updates**.
+
+```bash
+dpkg -i paket.deb      # Debian/Ubuntu: manuell installieren
+rpm -i paket.rpm       # RHEL/Fedora: manuell installieren
+```
+
+### 4. Kompilierung aus dem Quellcode
+
+Der aufwändigste Weg — nur wenn keine anderen Optionen existieren. Der Administrator
+ist selbst für Updates und Sicherheitslücken zuständig.
+
+<Aside type="caution">
+Manuell kompilierte Software liegt außerhalb des Paketmanagements und wird bei
+`apt upgrade` etc. nicht aktualisiert. Die Wartungslast liegt vollständig beim
+Administrator.
+</Aside>
+
+## Themen dieser Sektion
+
+- [Paketverwaltung in der Praxis](./verwaltung) — apt, dnf, zypper im Vergleich

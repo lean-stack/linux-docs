@@ -1,0 +1,147 @@
+---
+title: Tastatur
+sidebar:
+  order: 4
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Das Tastatur-Layout muss unter Linux **zweimal** eingestellt werden — für die virtuelle Konsole und für den grafischen Desktop. Beide Ebenen sind unabhängig voneinander.
+
+```
+┌─────────────────────────┐    ┌──────────────────────────┐
+│   Virtuelle Konsole     │    │    Grafischer Desktop     │
+│   (tty1–tty6)           │    │    (X11 / Wayland)        │
+│                         │    │                           │
+│   /etc/vconsole.conf    │    │   localectl (X11)         │
+│   loadkeys              │    │   GNOME/KDE Einstellungen │
+└─────────────────────────┘    └──────────────────────────┘
+```
+
+## Virtuelle Konsole
+
+Die virtuelle Konsole (TTY) verwendet **Keymaps** für das Tastatur-Layout und **Fonts** für die Zeichendarstellung. Beide werden beim Systemstart aus `/etc/vconsole.conf` geladen.
+
+### /etc/vconsole.conf
+
+```bash
+# /etc/vconsole.conf
+KEYMAP=de-latin1
+FONT=eurlatgr
+```
+
+Wichtige Parameter:
+- `KEYMAP` — Tastatur-Layout (z. B. `de-latin1`, `de`, `us`, `fr`)
+- `FONT` — Konsolenfont für korrekte Sonderzeichen-Darstellung
+
+Verfügbare Keymaps und Fonts:
+
+```bash
+ls /usr/share/kbd/keymaps/**/*.map.gz   # alle verfügbaren Keymaps
+ls /usr/share/kbd/consolefonts/         # alle verfügbaren Fonts
+```
+
+### Temporär setzen (ohne Neustart)
+
+```bash
+loadkeys de-latin1             # Keymap sofort aktivieren
+setfont eurlatgr               # Font sofort aktivieren
+
+# Aktuell aktive Keymap anzeigen
+dumpkeys | head -5
+```
+
+### Mit localectl setzen (dauerhaft)
+
+```bash
+localectl                              # aktuellen Status anzeigen
+localectl list-keymaps                 # alle verfügbaren Keymaps
+localectl list-keymaps | grep de       # deutsche Keymaps filtern
+
+sudo localectl set-keymap de-latin1
+```
+
+`localectl` schreibt automatisch in `/etc/vconsole.conf`.
+
+## Grafischer Desktop
+
+### localectl — X11-Konfiguration
+
+`localectl` kann auch das X11-Layout setzen, das von Display-Servern wie X.Org gelesen wird:
+
+```bash
+localectl list-x11-keymap-layouts      # alle X11-Layouts
+localectl list-x11-keymap-variants de  # Varianten für Deutsch
+
+sudo localectl set-x11-keymap de pc105 nodeadkeys
+# Syntax: set-x11-keymap Layout [Modell] [Variante] [Optionen]
+```
+
+Dies schreibt in `/etc/X11/xorg.conf.d/00-keyboard.conf`:
+
+```
+Section "InputClass"
+    Identifier "system-keyboard"
+    MatchIsKeyboard "on"
+    Option "XkbLayout" "de"
+    Option "XkbModel" "pc105"
+    Option "XkbVariant" "nodeadkeys"
+EndSection
+```
+
+### GNOME
+
+<Tabs>
+  <TabItem label="GUI">
+    **Einstellungen → Tastatur → Eingabequellen**
+
+    Unter GNOME können mehrere Layouts hinzugefügt und per Tastenkombination gewechselt werden.
+  </TabItem>
+  <TabItem label="gsettings">
+    ```bash
+    # Aktuelles Layout anzeigen
+    gsettings get org.gnome.desktop.input-sources sources
+
+    # Layout setzen (Deutsch)
+    gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'de')]"
+
+    # Mehrere Layouts (Deutsch + Englisch)
+    gsettings set org.gnome.desktop.input-sources sources "[('xkb', 'de'), ('xkb', 'us')]"
+    ```
+  </TabItem>
+</Tabs>
+
+### KDE Plasma
+
+<Tabs>
+  <TabItem label="GUI">
+    **Systemeinstellungen → Eingabegeräte → Tastatur**
+
+    Unter KDE können im Reiter *Layouts* mehrere Layouts verwaltet und Umschalttasten konfiguriert werden.
+  </TabItem>
+  <TabItem label="kwriteconfig">
+    ```bash
+    # Layout direkt in KDE-Konfiguration schreiben
+    kwriteconfig5 --file kxkbrc --group Layout --key Use true
+    kwriteconfig5 --file kxkbrc --group Layout --key LayoutList "de"
+    ```
+  </TabItem>
+</Tabs>
+
+### Wayland
+
+Unter Wayland wird das Tastatur-Layout vom Compositor (z. B. GNOME Shell, KWin) verwaltet — nicht mehr direkt von X.Org. Die Desktop-spezifischen Einstellungen (GNOME gsettings, KDE Systemeinstellungen) gelten deshalb auch unter Wayland.
+
+<Aside type="tip">
+`localectl set-x11-keymap` schreibt in eine X.Org-Konfigurationsdatei — diese wird von manchen Wayland-Compositors als Fallback gelesen, ist aber nicht für alle garantiert. Für Wayland sind die Desktop-eigenen Einstellungen verlässlicher.
+</Aside>
+
+## Übersicht: Welches Tool für welchen Zweck?
+
+| Ziel | Tool | Datei |
+|---|---|---|
+| Konsole (dauerhaft) | `localectl set-keymap` | `/etc/vconsole.conf` |
+| Konsole (temporär) | `loadkeys` | — |
+| X11 (dauerhaft) | `localectl set-x11-keymap` | `/etc/X11/xorg.conf.d/` |
+| GNOME | `gsettings` / Einstellungen | dconf-Datenbank |
+| KDE | Systemeinstellungen | `~/.config/kxkbrc` |

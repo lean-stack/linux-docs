@@ -1,0 +1,134 @@
+---
+title: Lokalisierung
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Lokalisierung** (*l10n*) bezeichnet die Anpassung des Systems an Sprache, Region und kulturelle Konventionen — Datums- und Zahlenformate, Währungssymbole, Zeichenkodierung.
+
+## Locale-Variablen
+
+Allen Linux-Systemen gemeinsam ist ein Satz von Umgebungsvariablen zur Steuerung der Lokalisierung:
+
+| Variable | Bedeutung |
+|---|---|
+| `LANG` | Standardsprache — setzt alle `LC_*`-Variablen als Basis |
+| `LC_MESSAGES` | Sprache von Programm-Ausgaben und Fehlermeldungen |
+| `LC_TIME` | Datums- und Uhrzeitformate |
+| `LC_NUMERIC` | Zahlenformate (Dezimaltrennzeichen, Tausendertrennzeichen) |
+| `LC_MONETARY` | Währungsformate |
+| `LC_COLLATE` | Sortierreihenfolge von Zeichenketten |
+| `LC_CTYPE` | Zeichenklassifizierung (Groß-/Kleinschreibung, Umlaute) |
+| `LC_PAPER` | Papierformat (A4 vs. Letter) |
+| `LC_ADDRESS` | Adressformat |
+| `LC_TELEPHONE` | Telefonformat |
+| `LC_MEASUREMENT` | Maßeinheiten (metrisch vs. imperial) |
+| `LC_ALL` | Überschreibt **alle** anderen LC-Variablen — nur für Tests |
+
+`LANG` setzt alle `LC_*`-Variablen als Grundlage. Einzelne `LC_*`-Variablen überschreiben den `LANG`-Wert für ihren Bereich.
+
+**Typische gemischte Konfiguration** (englische Oberfläche, deutsche Formate):
+
+```bash
+LANG=en_US.UTF-8
+LC_NUMERIC=de_DE.UTF-8
+LC_TIME=de_DE.UTF-8
+LC_MONETARY=de_DE.UTF-8
+LC_PAPER=de_DE.UTF-8
+LC_MEASUREMENT=de_DE.UTF-8
+```
+
+<Aside type="caution">
+`LC_ALL` nur zu Debug-Zwecken verwenden — es überschreibt sämtliche Locale-Einstellungen und kann nicht selektiv angepasst werden.
+</Aside>
+
+## Aktuelle Einstellungen anzeigen
+
+```bash
+locale                     # alle aktiven LC_*-Variablen
+locale -a                  # alle installierten Lokalisierungen
+locale -k LC_TIME          # Formatdetails einer Kategorie
+
+# Kategorie temporär für einen Befehl überschreiben
+LC_TIME=en_US.UTF-8 date
+```
+
+## Lokalisierungen einrichten
+
+### Schritt 1 — Locale generieren
+
+**Debian/Ubuntu:**
+
+```bash
+# /etc/locale.gen — Kommentarzeichen vor gewünschten Locales entfernen:
+# de_DE.UTF-8 UTF-8
+# en_US.UTF-8 UTF-8
+
+sudo locale-gen             # Locales erzeugen
+locale -a                   # Ergebnis prüfen
+```
+
+**RHEL/Fedora:**
+
+```bash
+# Sprachpakete installieren
+sudo dnf install glibc-langpack-de glibc-langpack-en
+# oder alle auf einmal:
+sudo dnf install glibc-all-langpacks
+```
+
+**Arch Linux:**
+
+```bash
+# /etc/locale.gen bearbeiten, dann:
+sudo locale-gen
+```
+
+### Schritt 2 — Systemweite Defaults setzen
+
+Die Datei `/etc/locale.conf` enthält die systemweiten Standardwerte:
+
+```bash
+# /etc/locale.conf
+LANG=de_DE.UTF-8
+LC_TIME=de_DE.UTF-8
+```
+
+<Aside type="tip">
+Unter Debian heißt die Datei `/etc/default/locale` statt `/etc/locale.conf`.
+</Aside>
+
+Alternativ mit `localectl` (empfohlen auf systemd-Systemen):
+
+```bash
+sudo localectl set-locale LANG=de_DE.UTF-8
+sudo localectl set-locale LC_TIME=de_DE.UTF-8
+```
+
+## localectl
+
+`localectl` ist das systemd-Werkzeug für Locale und Tastatur-Layout:
+
+```bash
+localectl                          # aktuellen Status anzeigen
+localectl list-locales             # alle verfügbaren Locales
+localectl set-locale LANG=de_DE.UTF-8
+```
+
+## Benutzerspezifische Einstellungen
+
+Benutzer können Locale-Einstellungen in `~/.profile` oder `~/.bashrc` überschreiben:
+
+```bash
+# ~/.profile
+export LANG=de_DE.UTF-8
+export LC_TIME=de_DE.UTF-8
+```
+
+Je nach Distribution wird auch `~/.config/locale.conf` unterstützt (`$XDG_CONFIG_HOME/locale.conf`).
+
+<Aside type="tip">
+Auf Servern mit SSH-Zugang kann es sinnvoll sein, in `/etc/locale.conf` nur `LANG=` (leer) zu setzen — dann gilt der POSIX-Standard. In der SSH-Konfiguration (`AcceptEnv LANG LC_*`) lässt sich dann die Locale des SSH-Clients durchreichen.
+</Aside>

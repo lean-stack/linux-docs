@@ -1,0 +1,91 @@
+---
+title: sudo & Root-Zugang
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Administrative Aufgaben erfordern Root-Rechte. Es gibt zwei Wege, diese zu erlangen:
+`su` (dauerhafter Benutzerwechsel) und `sudo` (einmaliger Befehl mit erhöhten Rechten).
+
+## Benutzerwechsel mit `su`
+
+`su` (**s**ubstitute **u**ser) wechselt in eine andere Benutzersitzung:
+
+```bash
+su            # zu root wechseln (Passwort von root erforderlich)
+su -          # zu root wechseln mit root's Umgebung (Login-Shell)
+su - anna     # zu Benutzer anna wechseln
+exit          # zurück zur ursprünglichen Sitzung
+```
+
+Der Bindestrich `-` ist wichtig: Ohne ihn wird nur der Benutzer gewechselt, aber die
+Umgebungsvariablen (PATH, HOME usw.) bleiben die des alten Benutzers.
+
+## Einzelne Befehle mit `sudo`
+
+`sudo` führt einen einzelnen Befehl mit den Rechten eines anderen Benutzers
+(standardmäßig root) aus:
+
+```bash
+sudo reboot                        # System neu starten
+sudo apt update                    # Paketliste aktualisieren
+sudo systemctl restart nginx       # Dienst neustarten
+sudo -u www-data ls /var/www       # als Benutzer www-data ausführen
+sudo -i                            # interaktive Root-Shell öffnen
+```
+
+In den meisten Distributionen genügt das **eigene Passwort** — root muss nicht
+bekannt sein. Das `sudo`-Programm merkt sich die Authentifizierung für einige
+Minuten (standardmäßig 15 Minuten).
+
+## Konfiguration mit `visudo`
+
+Die Berechtigungen für `sudo` werden in `/etc/sudoers` konfiguriert. Diese Datei
+**niemals** direkt bearbeiten — stattdessen immer `visudo` verwenden:
+
+```bash
+sudo visudo                  # Standard-Editor
+EDITOR=nano sudo visudo      # nano als Editor erzwingen
+```
+
+`visudo` speichert Änderungen zunächst in einer Kopie und prüft die Syntax, bevor
+die eigentliche Datei überschrieben wird. Ein Syntaxfehler in `/etc/sudoers` kann
+das System komplett sperren.
+
+### Syntax der sudoers-Datei
+
+```
+# Format: who  where=(as_whom)  what
+root     ALL=(ALL)     ALL
+anna     ALL=(ALL)     ALL        # anna darf alles als root
+%sudo    ALL=(ALL)     ALL        # alle in Gruppe "sudo" dürfen alles
+%wheel   ALL=(ALL)     NOPASSWD: ALL  # ohne Passwort-Eingabe
+```
+
+### Benutzer zur sudo-Gruppe hinzufügen
+
+Statt die sudoers-Datei direkt zu editieren, genügt es meist, einen Benutzer
+in die vorkonfigurierte sudo-Gruppe aufzunehmen:
+
+```bash
+# Debian/Ubuntu: Gruppe heißt "sudo"
+usermod -aG sudo anna
+
+# RHEL/Fedora/Arch: Gruppe heißt "wheel"
+usermod -aG wheel anna
+```
+
+<Aside type="note">
+Die Änderung wird erst nach einem erneuten Login wirksam. Mit `newgrp sudo` kann die
+neue Gruppe in der aktuellen Shell sofort aktiviert werden.
+</Aside>
+
+<Aside type="caution">
+**Sicherheitshinweis:** `sudo` vertraut darauf, dass in den privilegierten Programmen
+keine Softwarefehler versteckt sind. Tauchen solche Fehler auf, können sie zur
+sogenannten [Privilege Escalation](https://en.wikipedia.org/wiki/Privilege_escalation)
+führen. Alternativen wie [doas](https://github.com/Duncaen/OpenDoas) (aus der BSD-Welt)
+oder das noch experimentelle `run0` (systemd) verfolgen einfachere Ansätze.
+</Aside>

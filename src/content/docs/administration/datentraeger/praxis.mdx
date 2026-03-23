@@ -1,0 +1,146 @@
+---
+title: Praxis-Workflow
+sidebar:
+  order: 5
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Ein vollständiges Beispiel: eine neue Festplatte (`/dev/sdb`) partitionieren,
+formatieren und dauerhaft einhängen.
+
+## Schritt 1 — Datenträger identifizieren
+
+```bash
+lsblk
+```
+
+Beispielausgabe:
+```
+NAME   MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda      8:0    0   256G  0 disk
+├─sda1   8:1    0   512M  0 part /boot/efi
+└─sda2   8:2    0 255.5G  0 part /
+sdb      8:16   0   500G  0 disk        ← neue Festplatte, noch leer
+```
+
+<Aside type="caution">
+Sicherstellen, dass `/dev/sdb` wirklich der neue, leere Datenträger ist — und nicht
+ein bereits genutzter. `lsblk -f` zeigt Dateisystem-Typ und UUID der vorhandenen
+Partitionen.
+</Aside>
+
+## Schritt 2 — Partitionieren
+
+```bash
+sudo cfdisk /dev/sdb
+```
+
+Im cfdisk-Menü:
+1. Partitionstabellen-Typ wählen: **GPT** (empfohlen)
+2. **New** — neue Partition erstellen (gesamte Größe oder aufteilen)
+3. **Type** — Typ auf `Linux filesystem` belassen
+4. **Write** — Änderungen schreiben
+5. **Quit** — beenden
+
+Oder mit fdisk:
+```bash
+sudo fdisk /dev/sdb
+# g  → neue GPT-Tabelle
+# n  → neue Partition (Eingaben: Nummer, Start, Ende)
+# w  → schreiben
+```
+
+Ergebnis prüfen:
+```bash
+lsblk /dev/sdb
+# sdb      8:16   0  500G  0 disk
+# └─sdb1   8:17   0  500G  0 part
+```
+
+## Schritt 3 — Dateisystem erstellen
+
+```bash
+# ext4 (allgemein empfohlen)
+sudo mkfs.ext4 -L "Daten" /dev/sdb1
+
+# xfs (für große Dateien / Server)
+sudo mkfs.xfs -L "Daten" /dev/sdb1
+```
+
+UUID der neuen Partition notieren:
+
+```bash
+lsblk -f /dev/sdb1
+# NAME  FSTYPE LABEL UUID                                 MOUNTPOINT
+# sdb1  ext4   Daten a1b2c3d4-e5f6-7890-abcd-ef1234567890
+```
+
+## Schritt 4 — Einhängepunkt erstellen
+
+```bash
+sudo mkdir /mnt/daten
+```
+
+## Schritt 5 — Temporär einhängen und testen
+
+```bash
+sudo mount /dev/sdb1 /mnt/daten
+df -h /mnt/daten              # freier Speicher prüfen
+ls /mnt/daten                 # Inhalt anzeigen (sollte leer sein)
+
+# Schreibzugriff testen
+sudo touch /mnt/daten/test.txt
+ls /mnt/daten
+sudo rm /mnt/daten/test.txt
+```
+
+## Schritt 6 — Dauerhaft in /etc/fstab eintragen
+
+```bash
+sudo nano /etc/fstab
+```
+
+Neue Zeile hinzufügen (UUID aus Schritt 3 verwenden):
+
+```
+UUID=a1b2c3d4-e5f6-7890-abcd-ef1234567890  /mnt/daten  ext4  defaults  0  2
+```
+
+Eintrag testen:
+
+```bash
+sudo umount /mnt/daten         # erst aushängen
+sudo mount -a                  # alle fstab-Einträge einhängen
+df -h /mnt/daten               # prüfen ob eingehängt
+```
+
+## Swap-Partition einrichten
+
+```bash
+# Partition als Swap formatieren
+sudo mkswap -L "Swap" /dev/sdb2
+
+# Swap aktivieren
+sudo swapon /dev/sdb2
+
+# Status prüfen
+swapon --show
+free -h
+
+# Dauerhaft in /etc/fstab:
+# UUID=<uuid>  none  swap  sw  0  0
+```
+
+<Aside type="tip">
+Alternativ zu einer Swap-Partition kann auch eine **Swap-Datei** verwendet werden —
+flexibler, da die Größe nachträglich angepasst werden kann:
+
+```bash
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+# In /etc/fstab: /swapfile none swap sw 0 0
+```
+</Aside>

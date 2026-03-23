@@ -1,0 +1,131 @@
+---
+title: Manuelle Netzwerkkonfiguration
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Das Werkzeug `ip` aus dem **iproute2**-Paket ist der moderne Standard für die manuelle
+Netzwerkkonfiguration. Es ersetzt die älteren Befehle `ifconfig`, `route` und `arp`.
+
+<Aside type="caution">
+Änderungen mit `ip` sind **temporär** — nach einem Neustart sind sie weg. Für dauerhafte
+Konfiguration muss NetworkManager, systemd-networkd oder eine distro-spezifische
+Konfigurationsdatei verwendet werden.
+</Aside>
+
+## Schrittweise Netzwerk-Einrichtung
+
+### Schritt 1 — Schnittstelle prüfen
+
+```bash
+ip link show dev enp3s0
+```
+
+Ausgabe:
+```
+2: enp3s0: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN ...
+```
+
+`state DOWN` bedeutet: die Schnittstelle ist inaktiv.
+
+### Schritt 2 — Schnittstelle aktivieren
+
+```bash
+ip link set enp3s0 up
+```
+
+### Schritt 3 — IP-Adresse zuweisen
+
+```bash
+# CIDR-Notation: Adresse/Präfixlänge
+ip address add 192.168.1.10/24 broadcast + dev enp3s0
+
+# Aktuelle Adressen anzeigen
+ip address show
+ip a   # Kurzform
+```
+
+### Schritt 4 — Standard-Route setzen
+
+```bash
+# Gateway festlegen
+ip route add default via 192.168.1.1 dev enp3s0
+
+# Routing-Tabelle anzeigen
+ip route show
+ip r   # Kurzform
+```
+
+### Schritt 5 — DNS konfigurieren
+
+DNS-Server werden in `/etc/resolv.conf` eingetragen:
+
+```bash
+echo "nameserver 9.9.9.9" | sudo tee /etc/resolv.conf
+echo "nameserver 1.1.1.1" | sudo tee -a /etc/resolv.conf
+```
+
+<Aside type="note">
+Auf Systemen mit NetworkManager oder systemd-resolved wird `/etc/resolv.conf` automatisch
+verwaltet und manuelle Änderungen werden überschrieben.
+</Aside>
+
+## Netzwerkverbindung testen
+
+```bash
+# ICMP-Ping
+ping 192.168.1.1           # Gateway erreichbar?
+ping 9.9.9.9               # Internet erreichbar?
+ping google.de             # DNS funktioniert?
+
+# Route zum Ziel anzeigen
+traceroute google.de
+tracepath google.de        # ohne Root-Rechte
+
+# DNS auflösen
+host google.de
+dig google.de
+nslookup google.de
+
+# Offene Verbindungen und Ports anzeigen
+ss -tulpn                  # TCP/UDP, listening, Prozess-Info
+ss -an                     # alle Sockets
+```
+
+## Dauerhaft konfigurieren mit systemd-networkd
+
+Für Server ohne NetworkManager bietet `systemd-networkd` eine einfache Alternative.
+Konfigurationsdateien liegen in `/etc/systemd/network/`:
+
+```ini
+# /etc/systemd/network/20-wired.network
+[Match]
+Name=enp3s0
+
+[Network]
+Address=192.168.1.10/24
+Gateway=192.168.1.1
+DNS=9.9.9.9
+DNS=1.1.1.1
+```
+
+```bash
+systemctl enable --now systemd-networkd
+systemctl enable --now systemd-resolved
+```
+
+## Wichtige `ip`-Befehle im Überblick
+
+```bash
+ip link show                     # alle Schnittstellen anzeigen
+ip link set <iface> up/down      # aktivieren / deaktivieren
+ip address show                  # IP-Adressen anzeigen
+ip address add <addr> dev <if>   # IP-Adresse hinzufügen
+ip address del <addr> dev <if>   # IP-Adresse entfernen
+ip route show                    # Routen anzeigen
+ip route add default via <gw>    # Standard-Gateway setzen
+ip route del default             # Standard-Gateway entfernen
+ip neighbor show                 # ARP-Cache anzeigen
+```

@@ -1,0 +1,105 @@
+---
+title: Benutzer & Gruppen verwalten
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Benutzer anlegen
+
+Der Befehl `useradd` legt einen neuen Benutzer an:
+
+```bash
+# -m: Heimatverzeichnis anlegen
+# -s: Standard-Shell
+# -G: zusätzliche Gruppen (kommagetrennt)
+# -c: Kommentar / vollständiger Name
+useradd -m -s /bin/bash -G sudo,lpadmin -c "Anna Beispiel" anna
+```
+
+Anschließend das initiale Passwort setzen:
+
+```bash
+passwd anna
+```
+
+<Aside type="tip">
+Die beste Übersicht über alle verfügbaren Optionen liefert `man useradd`.
+</Aside>
+
+### Standardwerte für neue Benutzer
+
+In `/etc/default/useradd` stehen die Voreinstellungen — sie lassen sich auch mit
+`useradd -D` anzeigen und ändern:
+
+```bash
+$ useradd -D
+GROUP=1000
+HOME=/home
+SHELL=/bin/bash
+SKEL=/etc/skel
+```
+
+Das Verzeichnis `/etc/skel` enthält Dateien, die beim Anlegen eines Benutzers in sein
+Heimatverzeichnis kopiert werden (z. B. `.bashrc`, `.profile`).
+
+## Benutzer ändern
+
+```bash
+usermod -s /bin/zsh anna          # Shell ändern
+usermod -aG docker anna           # Gruppe hinzufügen (-a = append, ohne -a wird die Liste ersetzt!)
+usermod -c "Anna Muster" anna     # Kommentar ändern
+usermod -l neuer-name anna        # Login-Name umbenennen
+```
+
+<Aside type="caution">
+`usermod -G gruppe anna` **ohne** `-a` ersetzt alle zusätzlichen Gruppen durch die angegebene.
+Immer `-aG` verwenden, um eine Gruppe hinzuzufügen ohne andere zu entfernen.
+</Aside>
+
+## Benutzer löschen
+
+```bash
+userdel anna          # Benutzer löschen, Heimatverzeichnis bleibt erhalten
+userdel -r anna       # Benutzer und Heimatverzeichnis löschen
+```
+
+## Gruppen verwalten
+
+```bash
+groupadd entwicklung          # Gruppe anlegen
+groupdel entwicklung          # Gruppe löschen
+groupmod -n dev entwicklung   # Gruppe umbenennen
+```
+
+## Passwort-Verwaltung
+
+```bash
+passwd anna           # Passwort für anna setzen (als root)
+passwd                # eigenes Passwort ändern
+passwd -l anna        # Konto sperren (lock)
+passwd -u anna        # Konto entsperren (unlock)
+passwd -e anna        # Passwort sofort ablaufen lassen (erzwingt Änderung beim nächsten Login)
+```
+
+## Benutzerinformationen abfragen
+
+```bash
+id anna               # UID, GID und Gruppen anzeigen
+groups anna           # Gruppen eines Benutzers anzeigen
+who                   # aktuell angemeldete Benutzer
+w                     # angemeldete Benutzer mit Aktivität
+last                  # Login-Historie
+```
+
+### Flexibel abfragen mit `getent`
+
+`getent` (**get** **ent**ries) fragt alle konfigurierten Benutzerquellen ab —
+also nicht nur lokale Dateien, sondern auch LDAP oder Active Directory:
+
+```bash
+getent passwd anna    # Eintrag für anna aus /etc/passwd (oder LDAP)
+getent group sudo     # Mitglieder der Gruppe sudo
+getent passwd         # alle Benutzer
+```
