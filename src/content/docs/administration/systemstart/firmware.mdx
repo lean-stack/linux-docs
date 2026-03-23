@@ -8,7 +8,7 @@ import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
 Die Firmware ist das erste Programm, das beim Einschalten eines Rechners ausgeführt wird.
 Sie initialisiert Hardware (RAM-Test, CPU-Erkennung, Geräteerkennung) und startet dann
-den Bootloader.
+ein EFI-Binary — meistens einen Bootloader, aber nicht zwingend.
 
 ## UEFI — moderner Standard
 
@@ -37,6 +37,63 @@ efibootmgr -o 0001,0000    # Bootreihenfolge festlegen
 <Aside type="note">
 Auf UEFI-Systemen liegt der GRUB-Bootloader als `.efi`-Datei auf der ESP, typischerweise
 unter `/boot/efi/EFI/GRUB/grubx64.efi` oder `/boot/efi/EFI/debian/grubx64.efi`.
+</Aside>
+
+## UEFI ohne Bootloader — EFISTUB und UKI
+
+UEFI kann jeden gültigen EFI-Binary direkt starten — und Linux-Kernel sind seit
+Version 3.3 selbst gültige EFI-Executables. Das Stichwort dazu: **EFI stub**
+(`CONFIG_EFI_STUB=y`, in allen gängigen Distributionen aktiviert).
+
+Damit entfällt GRUB als Zwischenschicht. Stattdessen gibt es drei Boot-Wege:
+
+| Boot-Kette | Beschreibung |
+|---|---|
+| UEFI → GRUB → Kernel | klassisch, maximale Flexibilität |
+| UEFI → systemd-boot → Kernel | schlanker EFI-Bootloader ohne eigene Konfigurationssprache |
+| UEFI → Kernel (EFISTUB direkt) | kein Bootloader, Parameter per `efibootmgr` im NVRAM |
+| UEFI → UKI | alles in einer einzigen `.efi`-Datei |
+
+### EFISTUB — Kernel direkt booten
+
+Der Kernel liegt als `.efi`-Binary auf der ESP und wird von UEFI direkt geladen.
+Kernel-Parameter und der Pfad zur initramfs werden als NVRAM-Eintrag hinterlegt:
+
+```bash
+sudo efibootmgr \
+  --create \
+  --disk /dev/sda --part 1 \
+  --label "Linux EFISTUB" \
+  --loader /vmlinuz-6.1.0-18-amd64 \
+  --unicode 'root=UUID=abc123 initrd=\initrd.img-6.1.0-18-amd64 quiet'
+```
+
+### UKI — Unified Kernel Image
+
+Ein **UKI** bündelt Kernel, initramfs und Kernel-Parameter in einer einzigen
+signierten `.efi`-Datei. UEFI lädt die Datei direkt — kein Bootloader, keine
+separaten Konfigurationsdateien.
+
+Vorteile:
+- **Secure Boot** vereinfacht: nur eine Datei muss signiert werden
+- **Manipulationssicher**: cmdline ist Teil der signierten Datei
+- Kein Bootloader-Konfigurationsfehler möglich
+
+UKIs werden mit `ukify` (systemd-Tools) erstellt:
+
+```bash
+ukify build \
+  --linux /boot/vmlinuz-6.1.0 \
+  --initrd /boot/initrd.img-6.1.0 \
+  --cmdline "root=UUID=abc123 quiet" \
+  --output /boot/efi/EFI/Linux/linux-6.1.0.efi
+```
+
+<Aside type="note">
+UKIs und EFISTUB-Boot gewinnen an Bedeutung — besonders im Zusammenspiel mit
+**Secure Boot** und vollständig verschlüsselten Systemen. Die meisten Desktop-
+Distributionen nutzen derzeit noch GRUB als Default, aber systemd-boot + UKI
+wird zunehmend als Alternative angeboten (z. B. bei Fedora, openSUSE).
 </Aside>
 
 ## BIOS — älterer Standard
