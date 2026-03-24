@@ -1,6 +1,14 @@
 # Changelog
 
 
+## v1.0.0-pre.2
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.0-pre.1...v1.0.0-pre.2)
+
+### 🚀 Enhancements
+
+- Add many admin content pages. ([a8bc524](https://github.com/lean-stack/linux-docs/commit/a8bc524))
+
 ## v1.0.0-pre.1
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.0-pre.0...v1.0.0-pre.1)
