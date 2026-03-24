@@ -1,0 +1,188 @@
+---
+title: WordPress auf RHEL
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+WordPress benötigt einen **LAMP-Stack**: Apache als Webserver, MariaDB als
+Datenbank und PHP als Laufzeitumgebung. Auf RHEL kommt erschwerend hinzu, dass
+**SELinux** mitdenkt — und konfiguriert werden muss.
+
+## Überblick
+
+```
+Browser → Apache (httpd) → PHP-FPM → WordPress
+                                ↓
+                           MariaDB
+```
+
+## 1. Pakete installieren
+
+```bash
+sudo dnf install httpd mariadb-server php php-mysqlnd php-fpm \
+  php-json php-xml php-mbstring php-gd php-zip php-curl
+```
+
+PHP-Version prüfen (WordPress empfiehlt ≥ 8.1):
+```bash
+php -v
+```
+
+Neuere PHP-Versionen über das Remi-Repository:
+```bash
+sudo dnf install https://rpms.remirepo.net/enterprise/remi-release-9.rpm
+sudo dnf module switch-to php:remi-8.3
+```
+
+## 2. Dienste starten
+
+```bash
+sudo systemctl enable --now httpd
+sudo systemctl enable --now mariadb
+sudo systemctl enable --now php-fpm
+```
+
+## 3. MariaDB absichern und Datenbank anlegen
+
+```bash
+sudo mysql_secure_installation
+# → root-Passwort setzen, anonyme Benutzer entfernen,
+#    Remote-Root deaktivieren, Test-Datenbank entfernen
+```
+
+```bash
+sudo mysql -u root -p
+```
+
+```sql
+CREATE DATABASE wordpress CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'wpuser'@'localhost' IDENTIFIED BY 'sicheres-passwort';
+GRANT ALL PRIVILEGES ON wordpress.* TO 'wpuser'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+## 4. WordPress herunterladen
+
+```bash
+cd /var/www/html
+sudo curl -O https://wordpress.org/latest.tar.gz
+sudo tar -xzf latest.tar.gz
+sudo rm latest.tar.gz
+
+# Eigenes Verzeichnis (empfohlen statt Webroot direkt)
+sudo mv wordpress /var/www/html/wordpress
+```
+
+## 5. Konfiguration
+
+```bash
+sudo cp /var/www/html/wordpress/wp-config-sample.php \
+        /var/www/html/wordpress/wp-config.php
+
+sudo nano /var/www/html/wordpress/wp-config.php
+```
+
+Folgende Werte anpassen:
+
+```php
+define( 'DB_NAME',     'wordpress' );
+define( 'DB_USER',     'wpuser' );
+define( 'DB_PASSWORD', 'sicheres-passwort' );
+define( 'DB_HOST',     'localhost' );
+```
+
+Außerdem die **Security Keys** ersetzen — frische Werte von:
+`https://api.wordpress.org/secret-key/1.1/salt/`
+
+## 6. Dateirechte
+
+```bash
+sudo chown -R apache:apache /var/www/html/wordpress
+sudo find /var/www/html/wordpress -type d -exec chmod 755 {} \;
+sudo find /var/www/html/wordpress -type f -exec chmod 644 {} \;
+```
+
+## 7. Apache Virtual Host
+
+```bash
+sudo nano /etc/httpd/conf.d/wordpress.conf
+```
+
+```apache
+<VirtualHost *:80>
+    ServerName  wordpress.example.com
+    DocumentRoot /var/www/html/wordpress
+
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog  /var/log/httpd/wordpress-error.log
+    CustomLog /var/log/httpd/wordpress-access.log combined
+</VirtualHost>
+```
+
+```bash
+sudo apachectl configtest    # Syntax prüfen
+sudo systemctl reload httpd
+```
+
+## 8. SELinux konfigurieren
+
+SELinux blockiert auf RHEL standardmäßig, was httpd schreiben und auf das Netz
+zugreifen darf. WordPress benötigt beides:
+
+```bash
+# Apache darf Dateien schreiben (für Updates, Uploads)
+sudo setsebool -P httpd_unified 1
+
+# Apache darf Netzwerkverbindungen aufbauen (für APIs, Update-Checks)
+sudo setsebool -P httpd_can_network_connect 1
+
+# Korrekte SELinux-Kontexte für WordPress-Verzeichnis setzen
+sudo semanage fcontext -a -t httpd_sys_rw_content_t \
+  "/var/www/html/wordpress/wp-content(/.*)?"
+sudo restorecon -Rv /var/www/html/wordpress
+```
+
+<Aside type="caution">
+SELinux-Probleme sind die häufigste Ursache für stille Fehler auf RHEL.
+Wenn WordPress unerwartet nicht funktioniert:
+```bash
+sudo ausearch -m avc -ts recent    # SELinux-Verweigerte Aktionen
+sudo tail -f /var/log/audit/audit.log | grep denied
+```
+</Aside>
+
+## 9. Firewall
+
+```bash
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --reload
+```
+
+## 10. Installation abschließen
+
+Browser öffnen: `http://wordpress.example.com`
+
+Der WordPress-Installationsassistent führt durch die abschließende Einrichtung
+(Seitentitel, Admin-Konto).
+
+## Permalinks aktivieren
+
+Für sprechende URLs muss `mod_rewrite` in Apache aktiv sein und
+`.htaccess`-Dateien erlaubt werden — das `AllowOverride All` im VirtualHost
+oben deckt das bereits ab:
+
+```bash
+sudo dnf install mod_rewrite    # falls nicht vorhanden
+sudo systemctl restart httpd
+```
+
+Dann in WordPress: **Einstellungen → Permalinks** → gewünschte Struktur wählen
+und speichern.

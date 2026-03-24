@@ -1,0 +1,117 @@
+---
+title: Logging
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Logging ist unter Linux kein Sonderfall — es ist Standard. Jeder Dienst, jeder
+Kernel-Treiber, jedes Shell-Skript kann strukturierte Log-Meldungen absetzen.
+Und alle landen an einem zentralen Ort.
+
+## Eine Log-Meldung absetzen
+
+Das Werkzeug dafür ist `logger`:
+
+```bash
+logger "Backup gestartet"
+logger -p local0.info  "Backup gestartet"
+logger -p local0.err   "Backup fehlgeschlagen!"
+logger -t backup       "Backup von /home abgeschlossen"
+# -p: Priorität (facility.severity)
+# -t: Tag (erscheint als Programmname in der Log-Zeile)
+```
+
+Und sofort sichtbar:
+
+```bash
+journalctl -f
+# Mar 24 10:00:00 server micha[1234]: Backup von /home abgeschlossen
+```
+
+## Facility und Severity
+
+Jede Log-Meldung trägt zwei Kennzeichen: **woher** sie kommt (Facility) und
+**wie wichtig** sie ist (Severity). Zusammen ergeben sie die Priorität — z. B. `local0.err`.
+
+**Facilities** — die Herkunft:
+
+| Facility | Bedeutung |
+|---|---|
+| `kern` | Kernel |
+| `user` | Benutzer-Prozesse |
+| `mail` | Mail-System |
+| `daemon` | System-Daemons |
+| `auth` | Authentifizierung (Login, sudo, SSH) |
+| `cron` | Cron-Daemon |
+| `local0`–`local7` | Frei verfügbar — für eigene Dienste und Skripte |
+
+**Severities** — die Dringlichkeit (von kritisch nach unwichtig):
+
+| Stufe | Name | Bedeutung |
+|---|---|---|
+| 0 | `emerg` | System nicht mehr nutzbar |
+| 1 | `alert` | Sofortiger Handlungsbedarf |
+| 2 | `crit` | Kritischer Fehler |
+| 3 | `err` | Fehler |
+| 4 | `warning` | Warnung |
+| 5 | `notice` | Normales, aber bemerkenswertes Ereignis |
+| 6 | `info` | Informationsmeldung |
+| 7 | `debug` | Debug-Details |
+
+<Aside type="tip">
+`local0` bis `local7` sind für eigene Anwendungen reserviert. In Shell-Skripten
+ist `local0` eine gute Wahl — damit lassen sich Meldungen gezielt filtern und
+in eine eigene Log-Datei routen.
+</Aside>
+
+## Wo landen die Meldungen?
+
+Auf modernen Linux-Systemen landet alles zuerst im **systemd Journal** — einer
+zentralen, binären Log-Datenbank. Kein extra Log-Dienst nötig, journald läuft
+auf jedem systemd-System.
+
+```bash
+journalctl -n 20          # letzte 20 Einträge
+journalctl -f             # live mitlesen
+journalctl -p err         # nur Fehler (Severity ≤ err)
+```
+
+Daneben gibt es klassische Log-Dateien unter `/var/log/` — sie werden von
+einem zusätzlichen Log-Dienst (rsyslog oder syslog-ng) geschrieben, der das
+Journal weiterliest oder direkt von Anwendungen befüllt wird:
+
+| Pfad | Inhalt |
+|---|---|
+| `/var/log/syslog` | Allgemeine Systemmeldungen (Debian/Ubuntu) |
+| `/var/log/messages` | Allgemeine Systemmeldungen (RHEL/Fedora) |
+| `/var/log/auth.log` | Authentifizierung (Debian) |
+| `/var/log/secure` | Authentifizierung (RHEL/Fedora) |
+| `/var/log/kern.log` | Kernel-Meldungen |
+| `/var/log/nginx/` | nginx-Logs |
+| `/var/log/apache2/` | Apache-Logs |
+
+## Log-Dateien mit der Shell lesen
+
+Wenn doch eine Textdatei vorliegt:
+
+```bash
+tail -f /var/log/syslog               # live mitlesen
+less +F /var/log/syslog               # less mit Follow-Modus (Strg+C → Suche möglich)
+
+grep -i "error" /var/log/syslog
+grep "sshd" /var/log/auth.log | tail -20
+
+# Komprimierte alte Logs (von logrotate erzeugt)
+zcat /var/log/syslog.2.gz
+zgrep "error" /var/log/syslog.2.gz
+```
+
+## Themen dieser Sektion
+
+- [journalctl](./journal) — das Journal im Detail
+- [syslog](./syslog) — rsyslog und syslog-ng als klassische Log-Dienste
+- [Kernel-Log](./dmesg) — dmesg und Kernel-Meldungen
+- [Logrotate & Dienst-Logs](./logrotate) — Log-Rotation und anwendungsspezifische Logs

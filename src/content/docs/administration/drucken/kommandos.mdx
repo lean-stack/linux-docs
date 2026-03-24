@@ -1,0 +1,121 @@
+---
+title: Drucken auf der Kommandozeile
+sidebar:
+  order: 2
+  label: Kommandozeile
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+CUPS bringt zwei Befehlssatz-Familien mit: die klassischen BSD-Kommandos
+(`lpr`, `lpq`, `lprm`) und die moderneren CUPS-eigenen Befehle (`lp`, `lpstat`, `cancel`).
+Beide funktionieren parallel.
+
+## Drucken
+
+```bash
+# lp (CUPS)
+lp datei.pdf                        # auf Standard-Drucker
+lp -d BueroDrucker datei.pdf        # auf bestimmten Drucker
+lp -n 3 datei.pdf                   # 3 Kopien
+lp -o sides=two-sided-long-edge datei.pdf   # beidseitig
+lp -o media=A4 datei.pdf            # Papierformat
+lp -o fit-to-page datei.pdf         # an Seite anpassen
+
+# lpr (BSD-kompatibel)
+lpr datei.pdf
+lpr -P BueroDrucker datei.pdf
+lpr -# 3 datei.pdf                  # 3 Kopien
+```
+
+### Aus der Pipeline drucken
+
+```bash
+echo "Hallo Drucker" | lp
+cat bericht.txt | lp -d BueroDrucker
+
+# Konvertierung mit anderen Tools
+pandoc README.md -o - | lp         # Markdown → PDF → Drucker
+```
+
+### Druckoptionen abfragen
+
+```bash
+lpoptions -p BueroDrucker -l       # alle verfügbaren Optionen eines Druckers
+```
+
+Beispielausgabe:
+```
+PageSize/Seitenformat: *A4 A5 Letter Legal
+InputSlot/Papierzufuhr: *Auto Tray1 Manual
+ColorModel/Farbe: *Gray RGB
+Duplex/Duplexdruck: *None DuplexNoTumble DuplexTumble
+```
+
+Der mit `*` markierte Wert ist der aktuelle Standard.
+
+## Druckjobs verwalten
+
+```bash
+# Warteschlange anzeigen
+lpq                                 # Standard-Drucker
+lpq -P BueroDrucker                 # bestimmter Drucker
+lpstat -o                           # alle aktiven Jobs
+
+# Job abbrechen
+cancel 123                          # Job-ID
+cancel -a                           # alle eigenen Jobs
+cancel -a -u micha                  # alle Jobs eines Benutzers (root)
+lprm 123                            # BSD-Variante
+lprm -                              # alle eigenen Jobs
+```
+
+## Druckerstatus
+
+```bash
+lpstat -p                           # alle Drucker mit Status
+lpstat -p BueroDrucker              # bestimmter Drucker
+lpstat -d                           # Standard-Drucker
+lpstat -t                           # vollständige Statusübersicht
+```
+
+## PDF-Drucker — ohne echten Drucker drucken
+
+CUPS kann einen virtuellen PDF-Drucker einrichten:
+
+```bash
+# Debian/Ubuntu
+sudo apt install cups-pdf
+
+# Nach der Installation steht "PDF" als Drucker zur Verfügung
+# Ausgabe landet in ~/PDF/ oder /var/spool/cups-pdf/
+lp -d PDF datei.txt
+```
+
+<Aside type="tip">
+`cups-pdf` ist praktisch für Skripte, die Dokumente "drucken" sollen,
+oder zum Testen von Druckworkflows ohne echten Drucker.
+</Aside>
+
+## Klassische BSD-Druckbefehle
+
+Für Skripte und ältere Systeme — überall verfügbar wo CUPS installiert ist:
+
+| BSD-Befehl | CUPS-Äquivalent | Bedeutung |
+|---|---|---|
+| `lpr` | `lp` | Datei drucken |
+| `lpq` | `lpstat -o` | Warteschlange anzeigen |
+| `lprm` | `cancel` | Job entfernen |
+| `lpc status` | `lpstat -p` | Druckerstatus |
+
+## Logs
+
+```bash
+tail -f /var/log/cups/access_log    # Druckaufträge live
+tail -f /var/log/cups/error_log     # Fehler
+```
+
+Oder über das Journal:
+```bash
+journalctl -u cups -f
+```

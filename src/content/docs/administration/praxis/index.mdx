@@ -1,0 +1,34 @@
+---
+title: Praxis-Szenarien
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Dieser Abschnitt zeigt vollständige Einrichtungsszenarien, die Themen aus der
+gesamten Administrations-Sektion verbinden: Pakete, Benutzer, Rechte, Netzwerk,
+Firewall und Dienstverwaltung.
+
+<Aside type="note">
+Alle Beispiele sind auf **RHEL 9 / AlmaLinux 9 / Rocky Linux 9** ausgerichtet.
+Die Konzepte gelten distributionsübergreifend — Paketnamen, Pfade und Tools
+(dnf, firewalld, SELinux) sind jedoch RHEL-spezifisch.
+</Aside>
+
+## Szenarien
+
+- [Firewall mit firewalld](./firewall) — Zonen, Dienste, Ports: Grundlage für alle Server
+- [WordPress](./wordpress) — LAMP-Stack: Apache, PHP, MariaDB und WordPress
+- [Samba — Windows-Freigabe](./samba) — Dateifreigabe für Windows-Clients
+
+## Voraussetzungen
+
+- Frische RHEL-9-kompatible Installation
+- Root-Zugang oder sudo-Berechtigungen
+- Netzwerkverbindung (für Paketinstallation)
+- EPEL-Repository eingerichtet (für manche Pakete):
+  ```bash
+  sudo dnf install epel-release
+  ```

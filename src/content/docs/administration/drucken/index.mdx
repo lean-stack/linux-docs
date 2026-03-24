@@ -1,0 +1,172 @@
+---
+title: Drucken unter Linux
+sidebar:
+  order: 1
+  label: CUPS
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Das Drucksystem unter Linux basiert auf **CUPS** (Common Unix Printing System),
+entwickelt von Apple und heute der Standard auf allen gängigen Distributionen.
+CUPS abstrahiert Drucker als Warteschlangen (Queues), spricht das
+**IPP-Protokoll** (Internet Printing Protocol) und unterstützt Netzwerkdrucker,
+USB-Drucker und virtuelle Drucker (z. B. PDF).
+
+```
+Anwendung
+    │  lp / lpr / Druckdialog
+    ▼
+CUPS (cupsd)
+    │  filtert Job → richtiges Format für Drucker
+    ▼
+Drucker-Backend (USB, IPP, Socket, ...)
+    │
+    ▼
+Drucker
+```
+
+## Installation
+
+CUPS ist auf Desktop-Systemen meist vorinstalliert. Auf Servern:
+
+```bash
+# Debian/Ubuntu
+sudo apt install cups cups-client
+
+# RHEL/Fedora
+sudo dnf install cups cups-client
+
+# openSUSE
+sudo zypper install cups
+```
+
+```bash
+sudo systemctl enable --now cups
+systemctl status cups
+```
+
+## Web-Interface
+
+CUPS bringt ein Web-Interface mit, das auf Port 631 lauscht:
+
+```
+http://localhost:631
+```
+
+Über das Web-Interface lassen sich Drucker hinzufügen, konfigurieren und
+Druckjobs verwalten. Für administrative Aufgaben wird nach dem root-Passwort
+(oder einem Benutzer in der Gruppe `lpadmin`) gefragt.
+
+<Aside type="tip">
+Gruppe `lpadmin` berechtigt zur Drucker-Administration ohne Root-Passwort:
+```bash
+sudo usermod -aG lpadmin micha
+```
+</Aside>
+
+## Drucker einrichten
+
+### Automatische Erkennung
+
+CUPS erkennt viele USB- und Netzwerkdrucker automatisch. Im Web-Interface unter
+**Administration → Drucker hinzufügen** oder:
+
+```bash
+# Verfügbare Drucker suchen
+lpinfo -v
+# zeigt alle erkannten Geräte und Backends:
+# network ipp://drucker.local/ipp/print
+# direct usb://Canon/MF230%20Series
+```
+
+### Drucker über die Kommandozeile hinzufügen
+
+```bash
+# Netzwerkdrucker (IPP)
+sudo lpadmin \
+  -p "BueroDrucker" \
+  -E \
+  -v "ipp://192.168.1.100/ipp/print" \
+  -m everywhere
+# -p: Name der Queue
+# -E: Queue aktivieren und freigeben
+# -v: Geräte-URI
+# -m everywhere: IPP Everywhere / Driverless (für moderne IPP-Drucker)
+
+# USB-Drucker
+sudo lpadmin -p "MeinDrucker" -E -v "usb://Canon/MF230" -m everywhere
+```
+
+### Als Standard-Drucker setzen
+
+```bash
+sudo lpadmin -d BueroDrucker     # systemweit
+lpoptions -d BueroDrucker        # für den aktuellen Benutzer
+```
+
+## Druckertreiber
+
+Moderne Drucker unterstützen **IPP Everywhere** (driverless printing) — kein
+separater Treiber nötig, `-m everywhere` reicht.
+
+Für ältere Drucker:
+
+```bash
+# Verfügbare Treiber suchen
+lpinfo -m | grep -i canon
+lpinfo -m | grep -i "laserjet"
+
+# Drucker mit PPD-Treiber einrichten
+sudo lpadmin -p "AltDrucker" -E \
+  -v "socket://192.168.1.101:9100" \
+  -m "drv:///sample.drv/generpcl.ppd"
+```
+
+Für Drucker ohne freien Treiber gibt es oft Hersteller-PPDs oder das
+Paket `printer-driver-*`:
+
+```bash
+apt search printer-driver    # Debian/Ubuntu
+dnf search cups-filters      # RHEL/Fedora
+```
+
+## Drucker verwalten
+
+```bash
+lpstat -p                    # alle Drucker und Status
+lpstat -d                    # Standard-Drucker
+lpstat -s                    # Kurzübersicht
+
+sudo cupsenable BueroDrucker   # Drucker aktivieren
+sudo cupsdisable BueroDrucker  # Drucker deaktivieren
+sudo cupsaccept BueroDrucker   # Jobs annehmen
+sudo cupsreject BueroDrucker   # Jobs ablehnen
+
+sudo lpadmin -x BueroDrucker   # Drucker löschen
+```
+
+## CUPS-Konfiguration
+
+```bash
+/etc/cups/cupsd.conf       # CUPS-Daemon-Konfiguration
+/etc/cups/printers.conf    # installierte Drucker
+/etc/cups/ppd/             # PPD-Dateien der Drucker
+/var/log/cups/             # Access- und Error-Log
+```
+
+Zugriff auf das Web-Interface von anderen Rechnern erlauben:
+
+```
+# /etc/cups/cupsd.conf
+Listen *:631
+
+<Location />
+  Order allow,deny
+  Allow @LOCAL
+</Location>
+```
+
+```bash
+sudo systemctl restart cups
+```

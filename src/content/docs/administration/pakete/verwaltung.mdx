@@ -115,6 +115,41 @@ Die wichtigsten Paketverwaltungssysteme:
     ```bash
     dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
     ```
+
+    ### EPEL — Extra Packages for Enterprise Linux
+
+    RHEL und CentOS Stream sind auf **Stabilität und langen Support-Zeiträumen** ausgelegt.
+    Das hat einen Preis: Die Standard-Repositories (`BaseOS`, `AppStream`) enthalten
+    bewusst nur einen Bruchteil der unter Fedora oder Debian verfügbaren Pakete.
+    Viele für den Server-Betrieb nützliche Tools — `htop`, `iotop`, `inxi`, `hwinfo`,
+    `nmap`, `tmux`, `zsh` und Hunderte mehr — fehlen dort schlicht.
+
+    **EPEL** (Extra Packages for Enterprise Linux) schließt diese Lücke. Es wird von der
+    Fedora-Community gepflegt und enthält tausende zusätzliche Pakete, die für RHEL
+    und kompatible Distributionen (AlmaLinux, Rocky Linux, CentOS Stream) gebaut und
+    getestet wurden. EPEL ist de facto das erste, was auf einem frischen RHEL-System
+    installiert wird.
+
+    ```bash
+    # RHEL 9 / AlmaLinux 9 / Rocky Linux 9
+    sudo dnf install epel-release
+
+    # Auf reinem RHEL (ohne Community-Repos) ggf. zuerst:
+    sudo subscription-manager repos --enable codeready-builder-for-rhel-9-x86_64-rpms
+
+    # Paketliste aktualisieren und prüfen
+    sudo dnf makecache
+    dnf repolist | grep epel
+    ```
+
+    Danach stehen alle EPEL-Pakete direkt über `dnf` zur Verfügung:
+
+    ```bash
+    dnf install htop iotop inxi hwinfo tmux
+    ```
+
+    EPEL-Pakete sind von der Fedora-Community signiert — `gpgcheck=1` ist automatisch
+    aktiv, der Schlüssel wird beim Installieren von `epel-release` eingerichtet.
   </TabItem>
   <TabItem label="Debian/Ubuntu">
     Quellen werden in `/etc/apt/sources.list` und `/etc/apt/sources.list.d/*.list` konfiguriert:

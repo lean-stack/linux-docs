@@ -1,0 +1,199 @@
+---
+title: Windows-Freigabe mit Samba
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Samba** implementiert das SMB/CIFS-Protokoll unter Linux und ermöglicht damit
+Dateifreigaben, die Windows-, macOS- und Linux-Clients gleichermaßen einbinden
+können. Auf RHEL ist — wie bei WordPress — SELinux zu beachten.
+
+## Installation
+
+```bash
+sudo dnf install samba samba-client samba-common
+sudo systemctl enable --now smb
+sudo systemctl enable --now nmb    # NetBIOS-Namensauflösung (optional)
+```
+
+## Freigabe-Verzeichnis vorbereiten
+
+```bash
+sudo mkdir -p /srv/freigabe
+sudo chown -R root:root /srv/freigabe
+sudo chmod 2775 /srv/freigabe      # SGID: neue Dateien erben Gruppe
+```
+
+Für eine Freigabe auf der alle Benutzer einer Gruppe schreiben dürfen:
+
+```bash
+sudo groupadd freigabe-gruppe
+sudo chown root:freigabe-gruppe /srv/freigabe
+sudo usermod -aG freigabe-gruppe micha
+```
+
+## smb.conf — Grundkonfiguration
+
+```bash
+sudo nano /etc/samba/smb.conf
+```
+
+```ini
+[global]
+    workgroup = WORKGROUP
+    server string = Linux Fileserver
+    security = user
+    passdb backend = tdbsam
+    printing = cups
+    printcap name = cups
+
+# Freigabe für eine Gruppe
+[Freigabe]
+    comment = Gemeinsame Ablage
+    path = /srv/freigabe
+    valid users = @freigabe-gruppe
+    read only = no
+    browseable = yes
+    create mask = 0664
+    directory mask = 2775
+
+# Persönliches Home-Verzeichnis (optional)
+[homes]
+    comment = Heimatverzeichnis
+    valid users = %S
+    read only = no
+    browseable = no
+```
+
+Konfiguration prüfen:
+
+```bash
+testparm                   # Syntax und Logik prüfen
+testparm -s                # bereinigte Ausgabe ohne Kommentare
+```
+
+## Samba-Benutzer anlegen
+
+Samba verwaltet Passwörter in einer eigenen Datenbank — unabhängig vom
+Linux-Systempasswort. Der Linux-Benutzer muss aber existieren:
+
+```bash
+# Linux-Benutzer anlegen (falls noch nicht vorhanden)
+sudo useradd -M -s /sbin/nologin micha   # ohne Homedir, kein Shell-Login
+# oder für einen normalen Benutzer mit Login:
+sudo useradd -m micha
+
+# Samba-Passwort setzen
+sudo smbpasswd -a micha    # Benutzer hinzufügen + Passwort setzen
+sudo smbpasswd -e micha    # Benutzer aktivieren (enable)
+sudo smbpasswd -d micha    # Benutzer deaktivieren (disable)
+
+# Alle Samba-Benutzer anzeigen
+sudo pdbedit -L
+```
+
+## SELinux konfigurieren
+
+```bash
+# Samba darf auf das Freigabeverzeichnis zugreifen
+sudo semanage fcontext -a -t samba_share_t "/srv/freigabe(/.*)?"
+sudo restorecon -Rv /srv/freigabe
+
+# Kontext prüfen
+ls -laZ /srv/freigabe
+```
+
+Nützliche SELinux-Booleans für Samba:
+
+```bash
+# Home-Verzeichnisse freigeben
+sudo setsebool -P samba_enable_home_dirs 1
+
+# Samba darf beliebige Dateien lesen/schreiben (weniger sicher)
+sudo setsebool -P samba_export_all_rw 1
+
+# Aktuell gesetzte Samba-Booleans anzeigen
+getsebool -a | grep samba
+```
+
+<Aside type="caution">
+`samba_export_all_rw` ist eine grobe Keule — besser den korrekten
+`samba_share_t`-Kontext auf die jeweiligen Verzeichnisse setzen.
+</Aside>
+
+## Firewall
+
+```bash
+sudo firewall-cmd --permanent --add-service=samba
+sudo firewall-cmd --reload
+
+# Was öffnet der samba-Dienst?
+firewall-cmd --info-service=samba
+# ports: 135/tcp 137/udp 138/udp 139/tcp 445/tcp
+```
+
+## Dienste neu starten
+
+```bash
+sudo systemctl restart smb nmb
+systemctl status smb
+```
+
+## Verbindung testen
+
+### Vom Linux-Server selbst
+
+```bash
+smbclient -L localhost -U micha       # Freigaben auflisten
+smbclient //localhost/Freigabe -U micha  # Freigabe öffnen
+
+# Im smbclient:
+smb: \> ls           # Inhalt anzeigen
+smb: \> put datei    # Datei hochladen
+smb: \> get datei    # Datei herunterladen
+smb: \> exit
+```
+
+### Von einem Linux-Client einbinden
+
+```bash
+sudo mount -t cifs //server/Freigabe /mnt \
+  -o username=micha,password=...,uid=$(id -u),gid=$(id -g)
+
+# Dauerhaft in /etc/fstab:
+//server/Freigabe  /mnt/freigabe  cifs  credentials=/etc/samba/credentials,uid=1000,gid=1000  0 0
+```
+
+```bash
+# /etc/samba/credentials (Rechte 600!)
+username=micha
+password=sicheres-passwort
+```
+
+### Von Windows
+
+Im Explorer: `\\server-ip\Freigabe` oder `\\server-hostname\Freigabe`
+
+Oder per Kommandozeile (cmd/PowerShell):
+```
+net use Z: \\server-ip\Freigabe /user:micha
+```
+
+## Logs und Fehlersuche
+
+```bash
+journalctl -u smb -f                  # Samba-Logs live
+tail -f /var/log/samba/log.smbd       # SMB-Daemon-Log
+tail -f /var/log/samba/log.nmbd       # NetBIOS-Log
+
+# Verbindungsversuche beobachten
+tail -f /var/log/samba/log.*
+```
+
+<Aside type="tip">
+Die häufigsten Fehlerquellen auf RHEL sind SELinux-Kontexte und fehlende
+Samba-Passwörter. Mit `sudo ausearch -m avc -ts recent | grep samba` und
+`sudo pdbedit -L` lassen sich beide schnell prüfen.
+</Aside>

@@ -1,0 +1,125 @@
+---
+title: Filesystem Hierarchy Standard
+sidebar:
+  order: 5
+  label: FHS
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Der **Filesystem Hierarchy Standard** (FHS) ist eine Richtlinie, wie Linux-Distributionen
+ihren Verzeichnisbaum organisieren sollen — also welche Dateien wohin gehören.
+Theoretisch ist das völlig frei wählbar, aber ohne Konvention wäre jede Distribution
+anders aufgebaut.
+
+Fast alle Distributionen halten sich im Wesentlichen daran, weichen an der einen oder
+anderen Stelle aber ab. Die letzte offizielle Fassung stammt aus dem Jahr 2015 — manche
+aktuelle Entwicklung (z. B. der `usr`-Merge) hat den Standard bereits überholt.
+
+**Weiterführend:** [FHS Spezifikation](https://refspecs.linuxfoundation.org/fhs) ·
+[Wikipedia](https://de.wikipedia.org/wiki/Filesystem_Hierarchy_Standard)
+
+## Grundprinzip
+
+Der Standard klassifiziert Dateien entlang zweier Achsen:
+
+| | **Statisch** (unveränderlich im Betrieb) | **Variabel** (ändern sich laufend) |
+|---|---|---|
+| **Shareable** (teilbar zwischen Rechnern) | `/usr`, `/opt` | `/var/mail`, `/var/spool` |
+| **Unshareable** (rechnerspezifisch) | `/etc`, `/boot` | `/var/run`, `/var/lock` |
+
+## Das Root-Filesystem
+
+### Allgemein anerkannt
+
+| Verzeichnis | Inhalt |
+|---|---|
+| `/boot` | Dateien für den Systemstart (Kernel, initramfs, GRUB) |
+| `/dev` | Gerätedateien (von udev verwaltet) |
+| `/etc` | Systemweite Konfigurationsdateien |
+| `/home` | Heimatverzeichnisse der Benutzer |
+| `/mnt` | Manueller Einhängepunkt (durch den Administrator) |
+| `/opt` | Optionale Software, oft von Drittanbietern |
+| `/root` | Heimatverzeichnis des Superusers |
+| `/run` | Laufzeit-Dateien (PID-Files, Sockets) — flüchtig, nur im RAM |
+| `/srv` | Daten von Diensten (Webserver, FTP) |
+| `/tmp` | Temporäre Dateien — wird oft beim Booten geleert |
+
+### Linux-spezifische Erweiterungen
+
+| Verzeichnis | Inhalt |
+|---|---|
+| `/proc` | Virtuelles Dateisystem — Prozess- und Kernelinformationen |
+| `/sys` | Virtuelles Dateisystem — Kernel- und Hardware-Schnittstelle (sysfs) |
+
+Diese beiden Verzeichnisse enthalten **keine echten Dateien** — sie werden vom Kernel
+im Arbeitsspeicher gehalten und spiegeln den aktuellen Systemzustand wider.
+
+### Kaum noch relevant
+
+`/media` war früher der Einhängepunkt für Wechselmedien (CD-ROMs, USB-Sticks).
+Mit dem Verschwinden von Laufwerken und dem Aufkommen automatischer Einhängepunkte
+(über udev und Desktop-Umgebungen) hat es praktisch keine Bedeutung mehr.
+
+## Unter-Hierarchien
+
+### `/usr` — Unix System Resources
+
+Historisch lag `/usr` oft auf einem Netzlaufwerk, das viele Clients gemeinsam nutzten.
+Heute enthält es den Großteil aller installierten Programme und Bibliotheken:
+
+| Verzeichnis | Inhalt |
+|---|---|
+| `/usr/bin` | Ausführbare Programme (alle Benutzer) |
+| `/usr/sbin` | Systemverwaltungs-Programme (traditionell nur root) |
+| `/usr/lib` | Bibliotheken |
+| `/usr/share` | Architektur-unabhängige Daten (Manpages, Icons, Lokalisierungen) |
+| `/usr/include` | Header-Dateien für Entwickler |
+| `/usr/local` | Manuell installierte Software (nicht über Paketverwaltung) |
+
+`/usr/local` spiegelt die Struktur von `/usr` — mit `bin`, `lib`, `share` usw. —
+und ist für Software gedacht, die der Administrator selbst installiert hat und die
+nicht durch Paket-Updates überschrieben werden soll.
+
+### `/var` — Variable Daten
+
+Alles, was Programme im laufenden Betrieb schreiben:
+
+| Verzeichnis | Inhalt |
+|---|---|
+| `/var/log` | Log-Dateien |
+| `/var/cache` | Cache-Daten von Anwendungen und Paketverwaltung |
+| `/var/spool` | Warteschlangen (Drucker, Mail, Cron) |
+| `/var/lib` | Persistente Programm-Daten (Datenbanken, Paketdatenbank) |
+| `/var/tmp` | Temporäre Dateien — bleiben über Neustarts erhalten |
+
+Die Grundidee: Statische Programmdateien gehören nach `/usr`, alles was das Programm
+später erzeugt oder verändert nach `/var`.
+
+## Der `usr`-Merge
+
+Traditionell gab es sowohl `/bin` als auch `/usr/bin`, sowohl `/lib` als auch `/usr/lib`.
+Die Trennung stammte aus der Zeit, als `/usr` auf einem separaten (oft kleinen)
+Datenträger lag — die allernötigsten Werkzeuge mussten deshalb direkt im Root-Filesystem
+verfügbar sein.
+
+Diese Unterscheidung ist heute obsolet. Seit ca. 2010 haben fast alle Distributionen
+den sogenannten **`usr`-Merge** durchgeführt:
+
+```bash
+ls -la /bin
+# lrwxrwxrwx 1 root root 7 /bin -> usr/bin
+
+ls -la /lib
+# lrwxrwxrwx 1 root root 7 /lib -> usr/lib
+```
+
+`/bin`, `/sbin` und `/lib` sind heute meist symbolische Links auf ihre Pendants unter
+`/usr`. Der FHS-Standard wird dabei nicht verletzt — `cp` liegt zwar physisch in
+`/usr/bin`, ist aber weiterhin als `/bin/cp` erreichbar.
+
+<Aside type="note">
+Beim Erkunden des Dateisystems mit `ls /` sieht man diese Symlinks oft nicht auf
+den ersten Blick — sie sehen aus wie normale Verzeichnisse. `ls -la /` oder
+`file /bin` zeigt den wahren Charakter.
+</Aside>

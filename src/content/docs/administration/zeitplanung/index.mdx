@@ -1,0 +1,54 @@
+---
+title: Zeitplanung
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Linux bietet mehrere Mechanismen um Aufgaben zeitgesteuert auszuführen — von
+einmaligen Befehlen zu einem bestimmten Zeitpunkt bis zu komplexen wiederkehrenden
+Jobs mit Kalender-Syntax.
+
+## Vergleich der Ansätze
+
+| | `at` | `cron` | systemd Timer |
+|---|---|---|---|
+| Einmalig | ✓ | — | ✓ |
+| Wiederkehrend | — | ✓ | ✓ |
+| Syntax | natürliche Sprache | 5-Felder-Syntax | Kalender-Ausdrücke |
+| Logging | syslog | syslog | Journal |
+| Abhängigkeiten | — | — | ✓ (nach Units) |
+| Missed jobs | — | nein* | konfigurierbar |
+| Verbreitung | überall | überall | systemd-Systeme |
+
+\* anacron holt verpasste cron-Jobs nach — mehr dazu im [cron-Kapitel](./cron).
+
+## Wann was verwenden?
+
+**`at`** — für einmalige Aufgaben zu einem bestimmten Zeitpunkt:
+*"Starte den Neustart um 02:00 Uhr heute Nacht"*
+
+**cron** — für wiederkehrende Aufgaben auf Systemen die immer laufen:
+*"Erstelle jeden Tag um 03:00 ein Backup"*
+
+**anacron** — für wiederkehrende Aufgaben auf Systemen die nicht 24/7 laufen:
+*"Erstelle täglich ein Backup — auch wenn der Rechner gestern Nacht aus war"*
+
+**systemd Timer** — der moderne Weg für Dienste und Systemaufgaben:
+*"Führe diesen Dienst 5 Minuten nach dem Booten aus, dann täglich"*
+
+<Aside type="tip">
+Für neue Aufgaben auf systemd-Systemen sind **Timer-Units** zu bevorzugen — sie
+integrieren sich sauber ins Journal, unterstützen Abhängigkeiten zu anderen Units
+und sind mit `systemctl` gut verwaltbar. cron bleibt aber allgegenwärtig und
+ist auf jedem Linux-System vorhanden.
+</Aside>
+
+## Themen dieser Sektion
+
+- [at](./at) — einmalige Aufgaben mit `at` und `batch`
+- [cron](./cron) — wiederkehrende Aufgaben, crontab-Syntax, anacron
+- [systemd Timer](./systemd-timer) — Timer-Units als moderner Ansatz
+- [Praxis: Pausenwecker](./praxis) — wall, notify-send, at, cron und systemd-run im Vergleich

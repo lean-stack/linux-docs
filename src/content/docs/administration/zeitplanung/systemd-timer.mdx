@@ -1,0 +1,190 @@
+---
+title: systemd Timer
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**systemd Timer-Units** sind der moderne Ersatz für cron auf systemd-Systemen.
+Ein Timer ist eine `.timer`-Unit, die eine zugehörige `.service`-Unit aktiviert.
+
+Vorteile gegenüber cron:
+- Logging direkt im Journal (`journalctl -u mein-timer`)
+- Abhängigkeiten zu anderen Units möglich
+- Verpasste Jobs nachholen (`Persistent=true`)
+- Genaue Kontrolle über Ressourcen (CPU, RAM via cgroups)
+- Mit `systemctl` einheitlich verwalten
+
+## Aufbau: Timer + Service
+
+Jeder Timer braucht eine zugehörige Service-Unit mit **gleichem Namen**:
+
+```
+/etc/systemd/system/backup.timer    ← wann
+/etc/systemd/system/backup.service  ← was
+```
+
+### Beispiel: tägliches Backup
+
+```ini
+# /etc/systemd/system/backup.service
+[Unit]
+Description=Tägliches Backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/backup.sh
+User=backup
+```
+
+```ini
+# /etc/systemd/system/backup.timer
+[Unit]
+Description=Tägliches Backup um 03:00
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now backup.timer
+```
+
+## Timer-Typen
+
+### Kalender-basiert: OnCalendar
+
+`OnCalendar` verwendet eine flexible Kalender-Syntax:
+
+```ini
+OnCalendar=daily               # täglich um 00:00
+OnCalendar=weekly              # wöchentlich (montags 00:00)
+OnCalendar=monthly             # monatlich am 1.
+OnCalendar=hourly              # jede Stunde
+
+# Eigene Ausdrücke: YYYY-MM-DD HH:MM:SS
+OnCalendar=*-*-* 03:00:00      # täglich um 03:00
+OnCalendar=Mon *-*-* 08:00:00  # jeden Montag um 08:00
+OnCalendar=*-*-1 00:00:00      # jeden 1. des Monats
+OnCalendar=Sat,Sun *-*-* 10:00 # Wochenende um 10:00
+OnCalendar=*:0/15              # alle 15 Minuten
+```
+
+Ausdrücke validieren:
+```bash
+systemd-analyze calendar "Mon *-*-* 08:00:00"
+# → nächste Ausführung: Mon 2026-03-25 08:00:00 CET
+```
+
+### Relativ-basiert: OnBootSec, OnUnitActiveSec
+
+```ini
+[Timer]
+OnBootSec=5min          # 5 Minuten nach dem Booten (einmalig)
+OnUnitActiveSec=1h      # danach jede Stunde
+```
+
+Weitere relative Trigger:
+
+| Direktive | Bedeutung |
+|---|---|
+| `OnBootSec` | nach dem Booten |
+| `OnStartupSec` | nach dem Start von systemd |
+| `OnActiveSec` | nach Aktivierung des Timers |
+| `OnUnitActiveSec` | nach letzter Aktivierung der Service-Unit |
+| `OnUnitInactiveSec` | nach letzter Deaktivierung der Service-Unit |
+
+## Persistent — verpasste Jobs nachholen
+
+```ini
+[Timer]
+OnCalendar=daily
+Persistent=true
+```
+
+Mit `Persistent=true` merkt sich systemd den letzten Ausführungszeitpunkt
+(in `/var/lib/systemd/timers/`). War das System zur geplanten Zeit aus, wird
+der Job beim nächsten Start **sofort** nachgeholt.
+
+## Timer verwalten
+
+```bash
+systemctl list-timers              # alle aktiven Timer + nächste Ausführung
+systemctl list-timers --all        # auch inaktive Timer
+
+systemctl start backup.timer       # Timer aktivieren
+systemctl stop backup.timer        # Timer deaktivieren
+systemctl enable backup.timer      # autostart beim Booten
+systemctl disable backup.timer
+
+# Timer sofort auslösen (Service direkt starten)
+systemctl start backup.service
+
+# Status und letzte Ausführung
+systemctl status backup.timer
+systemctl status backup.service
+```
+
+## Logs
+
+```bash
+journalctl -u backup.service            # Logs des Service
+journalctl -u backup.timer              # Logs des Timers
+journalctl -u backup.service --since today
+journalctl -u backup.service -n 50
+```
+
+## Transiente Timer (ohne Unit-Datei)
+
+Für schnelle einmalige Aufgaben — ähnlich wie `at`:
+
+```bash
+# In 30 Minuten einen Befehl ausführen
+systemd-run --on-active=30m /usr/local/bin/mein-skript.sh
+
+# Um 02:00 Uhr heute Nacht
+systemd-run --on-calendar="02:00" /usr/local/bin/mein-skript.sh
+
+# Mit Beschreibung
+systemd-run --on-active=1h --unit=mein-job /usr/local/bin/mein-skript.sh
+```
+
+```bash
+systemctl list-timers    # zeigt auch transiente Timer
+```
+
+## Vergleich: cron vs. systemd Timer
+
+| | cron | systemd Timer |
+|---|---|---|
+| Konfiguration | Crontab-Zeilen | zwei Unit-Dateien |
+| Logging | syslog / Mail | Journal |
+| Verpasste Jobs | nein (ohne anacron) | `Persistent=true` |
+| Abhängigkeiten | keine | volle Unit-Abhängigkeiten |
+| Ressourcen-Limits | keine | cgroups |
+| Einmalige Jobs | nein | `systemd-run` |
+| Benutzer-Jobs | ja (`crontab -e`) | ja (User-Units) |
+| Verbreitung | überall | systemd-Systeme |
+
+<Aside type="tip">
+Für **Benutzer-spezifische** Timer (ohne root) können User-Units genutzt werden:
+
+```bash
+# Unit-Dateien unter:
+~/.config/systemd/user/
+
+# Verwalten:
+systemctl --user enable --now mein.timer
+systemctl --user list-timers
+journalctl --user -u mein.timer
+```
+
+Der Benutzer-Daemon läuft nur solange der Benutzer angemeldet ist — mit
+`loginctl enable-linger benutzername` auch ohne aktive Sitzung.
+</Aside>

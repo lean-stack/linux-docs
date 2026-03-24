@@ -1,0 +1,153 @@
+---
+title: Firewall mit firewalld
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**firewalld** ist der Standard-Firewall-Daemon auf RHEL und Fedora. Er verwaltet
+`nftables`-Regeln (früher iptables) über ein Zonen-Konzept und lässt sich sowohl
+über die Kommandozeile (`firewall-cmd`) als auch grafisch verwalten.
+
+## Installation und Start
+
+```bash
+sudo dnf install firewalld
+sudo systemctl enable --now firewalld
+firewall-cmd --state          # running
+```
+
+## Das Zonen-Konzept
+
+Jede Netzwerkschnittstelle ist einer **Zone** zugeordnet. Die Zone bestimmt,
+welcher Verkehr erlaubt ist:
+
+| Zone | Vertrauen | Typischer Einsatz |
+|---|---|---|
+| `drop` | keins | alles verwerfen (kein Reset) |
+| `block` | keins | alles ablehnen (mit Reset) |
+| `public` | gering | Internet, öffentliche Netze — **Default** |
+| `dmz` | mittel | Server in der DMZ |
+| `home` | hoch | Heimnetz |
+| `internal` | hoch | internes Firmennetz |
+| `trusted` | vollständig | alles erlaubt |
+
+```bash
+firewall-cmd --get-default-zone           # aktive Standard-Zone
+firewall-cmd --get-active-zones           # Zonen mit ihren Schnittstellen
+firewall-cmd --list-all                   # alle Regeln der Standard-Zone
+firewall-cmd --list-all --zone=public     # bestimmte Zone
+```
+
+## Dienste
+
+firewalld kennt vordefinierte **Dienste** mit Namen (einfacher als Portnummern):
+
+```bash
+firewall-cmd --get-services               # alle verfügbaren Dienste
+firewall-cmd --list-services              # aktive Dienste der Standard-Zone
+
+# Dienst erlauben
+sudo firewall-cmd --add-service=http
+sudo firewall-cmd --add-service=https
+sudo firewall-cmd --add-service=ssh
+
+# Dienst entfernen
+sudo firewall-cmd --remove-service=http
+```
+
+Eigene Dienst-Definitionen liegen in `/usr/lib/firewalld/services/` (System)
+bzw. `/etc/firewalld/services/` (eigene).
+
+## Ports
+
+Für Dienste ohne vordefinierten Namen direkt Ports freigeben:
+
+```bash
+sudo firewall-cmd --add-port=8080/tcp
+sudo firewall-cmd --add-port=3000/tcp
+sudo firewall-cmd --add-port=5000-5010/tcp    # Port-Bereich
+sudo firewall-cmd --remove-port=8080/tcp
+```
+
+## Permanente Regeln
+
+Alle bisherigen Änderungen gelten nur bis zum nächsten Neustart von firewalld.
+Für dauerhafte Regeln: `--permanent` + `--reload`:
+
+```bash
+# Permanent hinzufügen
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --permanent --add-port=8080/tcp
+
+# Änderungen laden (übernimmt permanente Regeln in laufende Konfiguration)
+sudo firewall-cmd --reload
+
+# Kurzform: direkt permanent + sofort aktiv
+sudo firewall-cmd --permanent --add-service=http && sudo firewall-cmd --reload
+```
+
+<Aside type="tip">
+Typischer Workflow: erst ohne `--permanent` testen, dann mit `--permanent`
+dauerhaft setzen und `--reload` ausführen. So sperrt man sich nicht versehentlich aus.
+</Aside>
+
+## Häufige Szenarien
+
+### Webserver freigeben
+
+```bash
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --reload
+```
+
+### SSH auf anderen Port verlegen
+
+```bash
+sudo firewall-cmd --permanent --add-port=2222/tcp
+sudo firewall-cmd --permanent --remove-service=ssh   # Port 22 schließen
+sudo firewall-cmd --reload
+```
+
+### Zugriff auf eine IP beschränken
+
+```bash
+# Nur 192.168.1.0/24 darf auf Port 3306 (MariaDB) zugreifen
+sudo firewall-cmd --permanent --add-rich-rule='
+  rule family="ipv4"
+  source address="192.168.1.0/24"
+  port protocol="tcp" port="3306"
+  accept'
+sudo firewall-cmd --reload
+```
+
+### Panic-Modus (Notfall)
+
+```bash
+sudo firewall-cmd --panic-on     # sofort ALLES blockieren
+sudo firewall-cmd --panic-off    # wieder freigeben
+sudo firewall-cmd --query-panic  # Status prüfen
+```
+
+## Übersicht: aktuelle Regeln
+
+```bash
+firewall-cmd --list-all           # Standard-Zone
+firewall-cmd --list-all-zones     # alle Zonen
+firewall-cmd --list-services      # aktive Dienste
+firewall-cmd --list-ports         # aktive Ports
+```
+
+## SELinux und Ports
+
+Auf RHEL überwacht SELinux zusätzlich, welche Ports Dienste nutzen dürfen.
+Wenn ein Dienst auf einem nicht-standardmäßigen Port läuft, muss SELinux
+informiert werden:
+
+```bash
+# Beispiel: Apache soll auf Port 8080 lauschen
+sudo semanage port -a -t http_port_t -p tcp 8080
+```

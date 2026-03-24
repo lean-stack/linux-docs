@@ -1,0 +1,130 @@
+---
+title: systemd Journal
+sidebar:
+  order: 2
+  label: Journal (journalctl)
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**journald** (`systemd-journald`) ist der Log-Dienst von systemd. Er sammelt
+Meldungen aus allen Quellen — Kernel, Dienste, Anwendungen — in einem zentralen,
+binären Journal. Abgefragt wird es mit `journalctl`.
+
+## Grundlegende Abfragen
+
+```bash
+journalctl                        # gesamtes Journal (älteste zuerst)
+journalctl -r                     # neueste Einträge zuerst (reverse)
+journalctl -f                     # Echtzeit-Ansicht (wie tail -f)
+journalctl -n 50                  # letzte 50 Zeilen
+journalctl -e                     # direkt ans Ende springen
+```
+
+## Nach Dienst filtern
+
+```bash
+journalctl -u nginx               # Logs eines bestimmten Units
+journalctl -u nginx -u php-fpm    # mehrere Units gleichzeitig
+journalctl -u nginx -f            # Echtzeit-Logs eines Dienstes
+journalctl -u ssh --since today   # seit Mitternacht
+```
+
+## Zeitfilter
+
+```bash
+journalctl --since "2026-03-24 08:00"
+journalctl --since "2026-03-24 08:00" --until "2026-03-24 09:00"
+journalctl --since "1 hour ago"
+journalctl --since yesterday
+journalctl --since today
+```
+
+## Nach Priorität filtern
+
+journald verwendet die syslog-Prioritätsstufen (0 = kritischst, 7 = debug —
+beschrieben im [Überblick](./index#facility-und-severity)):
+
+```bash
+journalctl -p err                 # Fehler und schlimmeres (0–3)
+journalctl -p warning             # Warnungen und schlimmeres (0–4)
+journalctl -p err -n 20           # letzte 20 Fehlermeldungen
+journalctl -p err --since today   # Fehler von heute
+```
+
+## Kernel-Meldungen
+
+```bash
+journalctl -k                     # nur Kernel-Meldungen (entspricht dmesg)
+journalctl -k --since today
+journalctl -k -p err              # nur Kernel-Fehler
+```
+
+## Nach Prozess oder Benutzer filtern
+
+```bash
+journalctl _PID=1234              # Logs eines bestimmten Prozesses
+journalctl _UID=1000              # Logs eines bestimmten Benutzers
+journalctl _EXE=/usr/sbin/sshd    # Logs eines bestimmten Programms
+```
+
+## Ausgabeformate
+
+```bash
+journalctl -o short               # Standard (Zeitstempel + Meldung)
+journalctl -o short-precise       # mit Mikrosekunden
+journalctl -o verbose             # alle Metadaten
+journalctl -o json                # JSON (für Weiterverarbeitung)
+journalctl -o json-pretty         # JSON, lesbar formatiert
+journalctl -o cat                 # nur Meldungstext, keine Metadaten
+```
+
+## Journal-Speicher verwalten
+
+```bash
+journalctl --disk-usage           # aktueller Speicherverbrauch
+
+# Altes Journal löschen
+journalctl --vacuum-time=7d       # alles älter als 7 Tage
+journalctl --vacuum-size=500M     # auf 500 MB reduzieren
+```
+
+Dauerhaft konfigurieren in `/etc/systemd/journald.conf`:
+
+```ini
+[Journal]
+SystemMaxUse=500M       # maximale Größe auf der Festplatte
+MaxRetentionSec=1month  # maximales Alter
+```
+
+```bash
+sudo systemctl restart systemd-journald   # Konfiguration übernehmen
+```
+
+## Persistentes Journal
+
+Standardmäßig liegt das Journal in `/run/log/journal/` und geht beim Neustart
+verloren. Für dauerhafte Speicherung:
+
+```bash
+sudo mkdir -p /var/log/journal
+sudo systemd-tmpfiles --create --prefix /var/log/journal
+sudo systemctl restart systemd-journald
+```
+
+Oder in `/etc/systemd/journald.conf`:
+```ini
+[Journal]
+Storage=persistent
+```
+
+<Aside type="tip">
+Mit `journalctl -b` sieht man nur die Logs des aktuellen Bootvorgangs.
+`journalctl -b -1` zeigt den vorherigen Boot — praktisch um zu verstehen,
+warum das System neu gestartet wurde.
+
+```bash
+journalctl --list-boots           # alle gespeicherten Boot-Vorgänge
+journalctl -b -1 -p err           # Fehler aus dem letzten Boot
+```
+</Aside>

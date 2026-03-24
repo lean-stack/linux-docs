@@ -1,0 +1,189 @@
+---
+title: syslog — rsyslog und syslog-ng
+sidebar:
+  order: 3
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Das **syslog-Protokoll** (RFC 5424) ist die Grundlage für klassische Log-Dienste.
+Es standardisiert Format und Transport von Meldungen — mit Facility und Severity
+als Metadaten (beschrieben im [Überblick](./index#facility-und-severity)).
+
+Auf modernen systemd-Systemen läuft journald als primäre Log-Instanz. rsyslog
+und syslog-ng setzen **darüber** auf: sie lesen das Journal oder empfangen
+Meldungen direkt und routen sie in Dateien, andere Server oder Datenbanken.
+
+## rsyslog
+
+**rsyslog** ("rocket-fast system for log processing") ist der Standard-Syslog-Daemon
+unter Debian/Ubuntu und RHEL/Fedora. Es ist rückwärtskompatibel mit dem klassischen
+syslogd, aber erheblich leistungsfähiger.
+
+### Konfiguration
+
+```bash
+/etc/rsyslog.conf          # Hauptkonfiguration
+/etc/rsyslog.d/*.conf      # Zusatzkonfigurationen (empfohlen)
+```
+
+Grundlegende Syntax einer Regel:
+```
+facility.severity    Ziel
+```
+
+Beispiele aus `/etc/rsyslog.conf`:
+
+```
+# Alle Kern-Meldungen nach /var/log/kern.log
+kern.*                          /var/log/kern.log
+
+# Authentifizierung nach auth.log
+auth,authpriv.*                 /var/log/auth.log
+
+# Alles ab "warning" nach syslog
+*.warn                          /var/log/syslog
+
+# Notfälle auf alle Terminals
+*.emerg                         :omusrmsg:*
+
+# Alles außer Debug nach /var/log/messages
+*.info;mail.none;authpriv.none  /var/log/messages
+```
+
+### Wichtige Sondersyntax
+
+```
+facility.*          # alle Severities
+*.severity          # alle Facilities
+facility.=severity  # genau diese Severity
+facility.!severity  # alles außer dieser Severity
+```
+
+### In eine Datei schreiben
+
+```
+# /etc/rsyslog.d/mein-dienst.conf
+local0.*    /var/log/mein-dienst.log
+```
+
+### Auf einen zentralen Log-Server weiterleiten
+
+rsyslog kann Logs über das Netzwerk senden — praktisch für zentrale Log-Infrastruktur:
+
+```
+# UDP (schnell, aber Verlust möglich)
+*.* @logserver.example.com:514
+
+# TCP (zuverlässig)
+*.* @@logserver.example.com:514
+```
+
+Auf dem **Empfänger-Server** UDP/TCP aktivieren in `/etc/rsyslog.conf`:
+
+```
+# UDP empfangen
+module(load="imudp")
+input(type="imudp" port="514")
+
+# TCP empfangen
+module(load="imtcp")
+input(type="imtcp" port="514")
+```
+
+```bash
+sudo systemctl restart rsyslog
+sudo systemctl status rsyslog
+```
+
+## syslog-ng
+
+**syslog-ng** (next generation) ist eine flexible Alternative zu rsyslog mit einer
+ausdrucksstärkeren Konfigurationssprache. Es ist Standard unter openSUSE und in
+einigen anderen Distributionen.
+
+### Konzept: Source → Filter → Destination
+
+Die Konfiguration in `/etc/syslog-ng/syslog-ng.conf` folgt einem klaren Muster:
+
+```
+source s_local {
+    system();          # systemd Journal + lokale Quellen
+    internal();        # syslog-ng eigene Meldungen
+};
+
+destination d_syslog {
+    file("/var/log/syslog");
+};
+
+destination d_auth {
+    file("/var/log/auth.log");
+};
+
+filter f_auth {
+    facility(auth, authpriv);
+};
+
+log {
+    source(s_local);
+    filter(f_auth);
+    destination(d_auth);
+};
+
+log {
+    source(s_local);
+    destination(d_syslog);
+};
+```
+
+### Netzwerk-Forwarding mit syslog-ng
+
+```
+destination d_logserver {
+    network("logserver.example.com" port(514) transport("tcp"));
+};
+
+log {
+    source(s_local);
+    destination(d_logserver);
+};
+```
+
+```bash
+sudo systemctl restart syslog-ng
+sudo systemctl status syslog-ng
+```
+
+## Aus eigenen Skripten loggen
+
+Mit `logger` können Shell-Skripte direkt ins syslog schreiben:
+
+```bash
+logger "Backup gestartet"
+logger -p local0.info "Backup gestartet"
+logger -p local0.err "Backup fehlgeschlagen!"
+logger -t backup "Backup von /home abgeschlossen"
+# -t setzt den "Tag" (Programm-Name in der Log-Zeile)
+```
+
+Ergebnis in `/var/log/syslog`:
+```
+Mar 24 10:00:00 server backup: Backup von /home abgeschlossen
+```
+
+<Aside type="tip">
+`logger` ist ideal für Cron-Jobs und eigene Skripte — statt Ausgaben in separate
+Dateien zu schreiben, landen sie automatisch im zentralen Log-System und profitieren
+von Rotation, Weiterleitung und Filterung.
+</Aside>
+
+## rsyslog vs. syslog-ng
+
+| | rsyslog | syslog-ng |
+|---|---|---|
+| Standard bei | Debian, Ubuntu, RHEL | openSUSE, manche Embedded |
+| Konfigurationssprache | einfach (klassisch) + RainerScript | eigene Sprache (ausdrucksstark) |
+| Performance | sehr hoch | sehr hoch |
+| Netzwerk | ja | ja |
+| Filterung | gut | sehr flexibel |
+| Lernkurve | flach | steiler |

@@ -1,0 +1,101 @@
+---
+title: Kernel-Log
+sidebar:
+  order: 4
+  label: Kernel-Log (dmesg)
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Der Linux-Kernel schreibt seine Meldungen in einen **Ringpuffer** im Arbeitsspeicher
+— den Kernel Ring Buffer. Wenn er voll ist, werden ältere Einträge überschrieben.
+`dmesg` liest diesen Puffer aus.
+
+## dmesg — Kernel-Meldungen lesen
+
+```bash
+dmesg                             # alle Kernel-Meldungen ausgeben
+dmesg | less                      # seitenweise lesen
+dmesg -T                          # mit lesbaren Zeitstempeln (statt Sekunden seit Boot)
+dmesg -H                          # "human readable": Farben + Zeitstempel + less
+sudo dmesg -w                     # Echtzeit (wie tail -f, benötigt root)
+```
+
+### Filtern
+
+```bash
+dmesg | grep -i error
+dmesg | grep -i usb               # USB-Ereignisse
+dmesg | grep -i eth               # Netzwerk-Erkennung
+dmesg | grep -i firmware          # Firmware-Fehler
+dmesg | tail -30                  # letzte 30 Meldungen
+```
+
+### Nach Priorität filtern
+
+```bash
+dmesg -l err                      # nur Fehler
+dmesg -l warn,err                 # Warnungen und Fehler
+dmesg -l err -T                   # Fehler mit lesbaren Zeitstempeln
+```
+
+Verfügbare Level: `emerg`, `alert`, `crit`, `err`, `warn`, `notice`, `info`, `debug`
+
+### Nach Einrichtung filtern
+
+```bash
+dmesg -f kern                     # nur Kernel-Meldungen
+dmesg -f daemon                   # Daemon-Meldungen
+dmesg -f user                     # Benutzer-Meldungen
+```
+
+## Typische Anwendungsfälle
+
+### Hardware-Erkennung nach Einstecken
+
+```bash
+# USB-Gerät einstecken, dann:
+sudo dmesg -w                     # live beobachten
+# oder:
+dmesg | tail -20
+```
+
+### Boot-Diagnose
+
+```bash
+dmesg -T | head -100              # frühe Boot-Meldungen
+dmesg | grep -i "error\|fail\|warn" -i
+```
+
+### Festplatten-Probleme
+
+```bash
+dmesg | grep -i "ata\|sda\|nvme\|i/o error"
+# Beispiel für einen Festplatten-Fehler:
+# [12345.678] ata1.00: exception Emask 0x0 SAct 0x0 SErr 0x0 action 0x0
+# [12345.679] ata1.00: failed command: READ DMA
+```
+
+### OOM-Killer (Out of Memory)
+
+```bash
+dmesg | grep -i "oom\|killed process"
+# Wenn zu wenig RAM: Kernel beendet Prozesse automatisch
+```
+
+<Aside type="note">
+Auf systemd-Systemen sind Kernel-Meldungen auch über `journalctl -k` abrufbar —
+mit allen Filtermöglichkeiten des Journals. `dmesg` liest direkt den Kernel-Puffer
+und ist deshalb auch ohne systemd verfügbar und schneller beim Booten sichtbar.
+</Aside>
+
+## /proc/kmsg und /dev/kmsg
+
+Für fortgeschrittene Anwendungsfälle (z. B. eigene Log-Daemons):
+
+```bash
+sudo cat /proc/kmsg              # Kernel-Log-Stream (blockiert, live)
+sudo cat /dev/kmsg               # alternative Schnittstelle mit Sequenznummern
+```
+
+Diese Schnittstellen werden intern von `dmesg`, `journald` und `syslogd` verwendet.

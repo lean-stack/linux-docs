@@ -1,0 +1,113 @@
+---
+title: Praxis — Der Pausenwecker
+sidebar:
+  order: 5
+  label: Praxis
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Ein konkretes Beispiel, das alle drei Ansätze zeigt: eine Erinnerung an die
+Pause um 11:15 Uhr — so präsent wie möglich.
+
+## Was ist am präsentesten?
+
+Zwei Werkzeuge eignen sich je nach Kontext:
+
+```bash
+# Terminal: wall schreibt auf ALLE offenen Terminals — unübersehbar
+wall "*** PAUSE! Es ist 11:15 ***"
+
+# Desktop: notify-send zeigt eine Desktop-Benachrichtigung
+notify-send -u critical -t 0 "Pause!" "Es ist 11:15 — Kaffeepause!"
+# -u critical  → höchste Dringlichkeit, andere Farbe/Symbol
+# -t 0         → bleibt bis zur Bestätigung (nicht automatisch weggeblendet)
+```
+
+Am besten beides kombiniert — plus optional ein Ton:
+
+```bash
+#!/bin/bash
+# /usr/local/bin/pausenwecker.sh
+wall "*** PAUSE! Es ist 11:15 ***"
+DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus \
+  notify-send -u critical -t 0 "⏰ Pause!" "Es ist 11:15 — Kaffeepause!"
+paplay /usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga 2>/dev/null || true
+```
+
+```bash
+chmod +x /usr/local/bin/pausenwecker.sh
+```
+
+<Aside type="note">
+`notify-send` aus cron oder systemd-System-Units heraus erfordert die explizite
+Angabe von `DISPLAY` und `DBUS_SESSION_BUS_ADDRESS`, weil diese Umgebungsvariablen
+in der Desktop-Sitzung des Benutzers leben — nicht im System-Kontext. Mit
+`systemd-run --user` entfällt dieses Problem, da der Befehl direkt in der
+Benutzersitzung ausgeführt wird.
+</Aside>
+
+## Heute einmalig — mit at
+
+Schnellste Einrichtung, kein Neustart nötig:
+
+```bash
+echo '/usr/local/bin/pausenwecker.sh' | at 11:15
+```
+
+Oder direkt ohne Skript-Datei:
+
+```bash
+at 11:15 << 'EOF'
+wall "*** PAUSE! Es ist 11:15 ***"
+DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus \
+  notify-send -u critical -t 0 "Pause!" "Es ist 11:15"
+EOF
+```
+
+Job prüfen und wieder entfernen:
+
+```bash
+atq                  # Job-Nummer anzeigen
+atrm 3               # Job 3 löschen
+```
+
+## Täglich — mit cron
+
+```bash
+crontab -e
+```
+
+Zeile einfügen:
+
+```
+15 11 * * 1-5   /usr/local/bin/pausenwecker.sh
+```
+
+`1-5` = Montag bis Freitag. Wieder entfernen: `crontab -e` und die Zeile löschen.
+
+## Täglich — mit systemd-run
+
+Der eleganteste Weg: `systemd-run --user` läuft direkt in der Desktop-Sitzung —
+kein DBUS-Problem, kein separates Skript zwingend nötig:
+
+```bash
+systemd-run --user \
+  --on-calendar="*-*-* 11:15:00" \
+  --unit=pausenwecker \
+  /usr/local/bin/pausenwecker.sh
+```
+
+Status und Logs:
+
+```bash
+systemctl --user list-timers
+systemctl --user status pausenwecker.timer
+journalctl --user -u pausenwecker.service
+```
+
+Wieder entfernen:
+
+```bash
+systemctl --user disable --now pausenwecker.timer
+```

@@ -1,0 +1,125 @@
+---
+title: Einmalige Aufgaben mit at
+sidebar:
+  order: 2
+  label: at
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+`at` führt Befehle **einmalig zu einem bestimmten Zeitpunkt** aus. Der Daemon
+`atd` läuft im Hintergrund und arbeitet die geplanten Jobs ab.
+
+## Installation
+
+`at` ist nicht immer vorinstalliert:
+
+<Tabs>
+  <TabItem label="Debian/Ubuntu">
+    ```bash
+    sudo apt install at
+    sudo systemctl enable --now atd
+    ```
+  </TabItem>
+  <TabItem label="RHEL/Fedora">
+    ```bash
+    sudo dnf install at
+    sudo systemctl enable --now atd
+    ```
+  </TabItem>
+  <TabItem label="openSUSE">
+    ```bash
+    sudo zypper install at
+    sudo systemctl enable --now atd
+    ```
+  </TabItem>
+</Tabs>
+
+## Aufgaben planen
+
+```bash
+at 02:00                   # heute um 02:00 Uhr
+at 02:00 tomorrow          # morgen um 02:00 Uhr
+at 14:30 Jul 4             # am 4. Juli um 14:30 Uhr
+at now + 1 hour            # in einer Stunde
+at now + 30 minutes
+at now + 2 days
+at midnight                # um Mitternacht
+at noon                    # um 12:00 Uhr
+at teatime                 # um 16:00 Uhr
+```
+
+Nach der Zeitangabe öffnet sich ein interaktiver Prompt. Befehle eingeben,
+mit `Strg+D` abschließen:
+
+```
+at 02:00
+at> /usr/local/bin/backup.sh
+at> systemctl restart nginx
+at> <Strg+D>
+job 3 at Mon Mar 24 02:00:00 2026
+```
+
+### Aus einer Datei oder Pipeline
+
+```bash
+# Aus Datei
+at 02:00 < /etc/meine-aufgaben.sh
+
+# Per Pipeline (heredoc)
+at now + 1 hour << 'EOF'
+/usr/local/bin/backup.sh >> /var/log/backup.log 2>&1
+EOF
+```
+
+## Geplante Jobs verwalten
+
+```bash
+atq                        # alle ausstehenden Jobs anzeigen (auch: at -l)
+at -c 3                    # Inhalt von Job 3 anzeigen
+atrm 3                     # Job 3 löschen (auch: at -r 3)
+```
+
+Beispiel `atq`-Ausgabe:
+```
+3   Mon Mar 24 02:00:00 2026 a micha
+4   Tue Mar 25 14:30:00 2026 a root
+```
+
+Spalten: Job-Nummer, Zeitpunkt, Queue (`a` = at), Benutzer
+
+<Aside type="note">
+Jobs werden als Benutzer ausgeführt, der sie erstellt hat. Umgebungsvariablen
+werden teilweise übernommen — aber nicht alle. Pfade in Skripten sollten daher
+immer absolut sein.
+</Aside>
+
+## batch — bei niedriger Systemlast
+
+`batch` funktioniert wie `at`, wartet aber bis die durchschnittliche Systemlast
+unter einen Schwellwert fällt (Standard: 1.5). Praktisch für ressourcenintensive
+Aufgaben, die nicht zeitkritisch sind:
+
+```bash
+batch << 'EOF'
+nice -n 19 /usr/local/bin/schwerer-job.sh
+EOF
+```
+
+## Zugriffssteuerung
+
+`atd` prüft zwei Dateien:
+
+| Datei | Bedeutung |
+|---|---|
+| `/etc/at.allow` | Nur diese Benutzer dürfen `at` verwenden |
+| `/etc/at.deny` | Diese Benutzer dürfen `at` nicht verwenden |
+
+Wenn `/etc/at.allow` existiert, darf nur wer darin steht. Wenn nur `/etc/at.deny`
+existiert, darf jeder außer den gelisteten. Existiert keine der beiden Dateien,
+darf nur root.
+
+```bash
+# Benutzer "anna" erlauben:
+echo "anna" | sudo tee -a /etc/at.allow
+```

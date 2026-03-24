@@ -1,0 +1,180 @@
+---
+title: Log-Rotation und Dienst-Logs
+sidebar:
+  order: 5
+
+  label: Logrotate & Dienst-Logs
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Log-Dateien wachsen unbegrenzt — ohne Rotation würden sie irgendwann die Festplatte
+füllen. **logrotate** ist das Standardwerkzeug zum automatischen Verwalten von
+Log-Dateien: rotieren, komprimieren, löschen.
+
+## logrotate
+
+### Konfiguration
+
+```bash
+/etc/logrotate.conf          # globale Standardwerte
+/etc/logrotate.d/            # Dienst-spezifische Konfigurationen
+```
+
+Beispiel `/etc/logrotate.conf`:
+
+```
+# Globale Defaults
+weekly          # wöchentlich rotieren
+rotate 4        # 4 alte Versionen behalten
+compress        # komprimieren (gzip)
+delaycompress   # aktuelle Rotation erst beim nächsten Lauf komprimieren
+missingok       # kein Fehler wenn Log-Datei fehlt
+notifempty      # nicht rotieren wenn Datei leer ist
+
+# Einzelne Dienste einbinden:
+include /etc/logrotate.d
+```
+
+### Eine typische Dienst-Konfiguration
+
+```
+# /etc/logrotate.d/nginx
+/var/log/nginx/*.log {
+    daily              # täglich rotieren
+    rotate 14          # 14 Tage aufbewahren
+    compress
+    delaycompress
+    missingok
+    notifempty
+    sharedscripts      # pre/postrotate nur einmal ausführen (nicht pro Datei)
+    postrotate
+        nginx -s reopen   # nginx: neue Log-Datei öffnen
+    endscript
+}
+```
+
+### Wichtige Direktiven
+
+| Direktive | Bedeutung |
+|---|---|
+| `daily` / `weekly` / `monthly` | Rotationsintervall |
+| `rotate N` | N alte Versionen behalten, ältere löschen |
+| `compress` | ältere Logs mit gzip komprimieren |
+| `delaycompress` | erst ab der übernächsten Rotation komprimieren |
+| `size 100M` | rotieren wenn Datei größer als 100 MB (statt zeitbasiert) |
+| `missingok` | kein Fehler bei fehlender Log-Datei |
+| `notifempty` | nicht rotieren wenn Datei leer |
+| `create 640 root adm` | neue Log-Datei mit diesen Rechten anlegen |
+| `dateext` | Datums-Suffix statt Nummer (`syslog.2026-03-24`) |
+| `postrotate` / `endscript` | Befehl nach Rotation ausführen |
+| `copytruncate` | Datei kopieren und dann leeren (statt umbenennen) |
+
+<Aside type="tip">
+`postrotate` ist wichtig für Dienste wie nginx oder Apache: Nach der Rotation muss
+der Dienst angewiesen werden, die neue (leere) Log-Datei zu öffnen — sonst schreibt
+er weiter in die umbenannte alte Datei.
+
+Viele Dienste unterstützen dafür ein Signal:
+```bash
+nginx -s reopen
+systemctl reload apache2
+kill -USR1 $(cat /var/run/rsyslogd.pid)
+```
+</Aside>
+
+### logrotate manuell ausführen
+
+```bash
+sudo logrotate /etc/logrotate.conf          # normale Ausführung
+sudo logrotate --force /etc/logrotate.conf  # erzwingen (auch wenn nicht fällig)
+sudo logrotate --debug /etc/logrotate.conf  # Trockenlauf — was würde passieren?
+```
+
+logrotate wird üblicherweise täglich als Cron-Job oder systemd-Timer ausgeführt:
+
+```bash
+systemctl list-timers | grep logrotate
+cat /etc/cron.daily/logrotate
+```
+
+## Dienst-spezifische Logs
+
+### nginx
+
+```bash
+tail -f /var/log/nginx/access.log    # Zugriffe live
+tail -f /var/log/nginx/error.log     # Fehler live
+
+# Häufig aufgerufene URLs
+awk '{print $7}' /var/log/nginx/access.log | sort | uniq -c | sort -rn | head -10
+
+# HTTP-Statuscodes zählen
+awk '{print $9}' /var/log/nginx/access.log | sort | uniq -c | sort -rn
+
+# IP-Adressen mit den meisten Zugriffen
+awk '{print $1}' /var/log/nginx/access.log | sort | uniq -c | sort -rn | head -10
+```
+
+Log-Format in `/etc/nginx/nginx.conf`:
+```nginx
+log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                '$status $body_bytes_sent "$http_referer" "$http_user_agent"';
+
+access_log /var/log/nginx/access.log main;
+error_log  /var/log/nginx/error.log warn;
+```
+
+### Apache
+
+```bash
+tail -f /var/log/apache2/access.log    # Debian/Ubuntu
+tail -f /var/log/httpd/access_log      # RHEL/Fedora
+
+tail -f /var/log/apache2/error.log
+```
+
+### systemd-Dienste ohne eigene Log-Datei
+
+Viele moderne Dienste schreiben nur ins Journal, nicht nach `/var/log/`. Die
+logrotate-Konfiguration für das Journal ist über `journald.conf` geregelt
+(siehe [Journal](./journal#journal-speicher-verwalten)).
+
+```bash
+journalctl -u mariadb -f             # MariaDB-Logs live
+journalctl -u postgresql --since today
+```
+
+### Eigene Log-Datei für einen systemd-Dienst einrichten
+
+In der Unit-Datei:
+
+```ini
+[Service]
+StandardOutput=append:/var/log/mein-dienst.log
+StandardError=append:/var/log/mein-dienst.log
+```
+
+Dazu eine passende logrotate-Konfiguration in `/etc/logrotate.d/mein-dienst`.
+
+## Logs zentral durchsuchen
+
+Wenn viele Logs aus verschiedenen Quellen durchsucht werden müssen:
+
+```bash
+# Alle Logs eines bestimmten Tags durchsuchen
+grep -r "Fehler" /var/log/ 2>/dev/null
+
+# Nur Text-Logs (keine Binärdateien)
+grep -r --include="*.log" "connection refused" /var/log/
+
+# Mit journalctl alle Quellen auf einmal
+journalctl --since "1 hour ago" -p err
+```
+
+<Aside type="note">
+Für größere Infrastrukturen lohnt sich ein zentraler Log-Stack wie
+**Loki + Grafana** (leichtgewichtig) oder der klassische **ELK-Stack**
+(Elasticsearch + Logstash + Kibana). Diese sammeln Logs von vielen Servern
+und ermöglichen komfortable Suche und Visualisierung.
+</Aside>

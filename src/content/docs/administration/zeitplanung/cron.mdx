@@ -1,0 +1,197 @@
+---
+title: Wiederkehrende Aufgaben mit cron
+sidebar:
+  order: 3
+  label: cron
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`cron` ist der klassische Daemon für wiederkehrende Aufgaben. Er liest
+Konfigurationsdateien (Crontabs) und führt Jobs zur definierten Zeit aus.
+Auf fast allen Linux-Systemen ist cron vorinstalliert — die verbreiteten
+Implementierungen sind **crond** (RHEL/Fedora), **cron** (Debian/Ubuntu)
+und **cronie** (viele Distributionen).
+
+```bash
+systemctl status cron        # Debian/Ubuntu
+systemctl status crond       # RHEL/Fedora
+```
+
+## Crontab-Syntax
+
+Jede Zeile in einer Crontab folgt diesem Schema:
+
+```
+┌───────── Minute        (0–59)
+│ ┌─────── Stunde        (0–23)
+│ │ ┌───── Tag des Monats (1–31)
+│ │ │ ┌─── Monat         (1–12 oder jan–dec)
+│ │ │ │ ┌─ Wochentag     (0–7, 0 und 7 = Sonntag, oder sun–sat)
+│ │ │ │ │
+* * * * *  Befehl
+```
+
+### Beispiele
+
+```
+# Täglich um 03:00 Uhr
+0 3 * * *    /usr/local/bin/backup.sh
+
+# Jeden Montag um 08:00 Uhr
+0 8 * * 1    /usr/local/bin/wochenbericht.sh
+
+# Jede Stunde
+0 * * * *    /usr/local/bin/check.sh
+
+# Alle 15 Minuten
+*/15 * * * * /usr/local/bin/monitor.sh
+
+# Am 1. jeden Monats um 00:00
+0 0 1 * *    /usr/local/bin/monatsabschluss.sh
+
+# Montag bis Freitag um 09:00
+0 9 * * 1-5  /usr/local/bin/arbeitstag-start.sh
+
+# Mehrere Werte mit Komma
+0 6,12,18 * * *  /usr/local/bin/dreimal-taeglich.sh
+```
+
+### Sonderwerte
+
+Statt der 5 Felder können auch Kurzformen verwendet werden:
+
+| Kurzform | Bedeutung |
+|---|---|
+| `@reboot` | Einmalig beim Systemstart |
+| `@hourly` | Jede Stunde (`0 * * * *`) |
+| `@daily` | Täglich um Mitternacht (`0 0 * * *`) |
+| `@weekly` | Wöchentlich sonntags (`0 0 * * 0`) |
+| `@monthly` | Monatlich am 1. (`0 0 1 * *`) |
+| `@yearly` | Jährlich am 1. Januar (`0 0 1 1 *`) |
+
+<Aside type="tip">
+Crontab-Syntax online validieren und erklären lassen: [crontab.guru](https://crontab.guru)
+ist ein unverzichtbares Werkzeug.
+</Aside>
+
+## Benutzer-Crontab
+
+Jeder Benutzer kann eine eigene Crontab verwalten:
+
+```bash
+crontab -e             # Crontab bearbeiten (öffnet Editor)
+crontab -l             # Crontab anzeigen
+crontab -r             # Crontab löschen (Vorsicht: kein Nachfragen!)
+crontab -l > backup.txt  # Crontab sichern
+```
+
+<Aside type="caution">
+`crontab -r` löscht die gesamte Crontab **ohne Rückfrage**. Zum Löschen einer
+einzelnen Zeile besser `crontab -e` verwenden.
+</Aside>
+
+## System-Crontabs
+
+Neben Benutzer-Crontabs gibt es systemweite Konfigurationen:
+
+```bash
+/etc/crontab           # systemweite Crontab (hat zusätzliches Benutzer-Feld)
+/etc/cron.d/           # Verzeichnis für Paket-eigene Crontabs
+/etc/cron.hourly/      # Skripte, die stündlich ausgeführt werden
+/etc/cron.daily/       # täglich
+/etc/cron.weekly/      # wöchentlich
+/etc/cron.monthly/     # monatlich
+```
+
+Format von `/etc/crontab` und Dateien in `/etc/cron.d/` — mit Benutzerfeld:
+
+```
+# Minute Stunde Tag Monat Wochentag  Benutzer  Befehl
+0 3 * * *                            root      /usr/local/bin/backup.sh
+*/5 * * * *                          www-data  /usr/local/bin/check-web.sh
+```
+
+Skripte in `/etc/cron.daily/` etc. müssen **ausführbar** sein und dürfen
+**keine Dateiendung** haben (z. B. `backup`, nicht `backup.sh`):
+
+```bash
+sudo cp mein-script.sh /etc/cron.daily/mein-script
+sudo chmod +x /etc/cron.daily/mein-script
+```
+
+## Ausgabe und Logging
+
+Cron sendet die Ausgabe eines Jobs standardmäßig per E-Mail an den ausführenden
+Benutzer. Auf Servern ohne Mail-Konfiguration landet das im Nirgendwo oder erzeugt
+Fehler. Besser: Ausgabe explizit umleiten:
+
+```bash
+# Ausgabe komplett unterdrücken
+0 3 * * *  /usr/local/bin/backup.sh > /dev/null 2>&1
+
+# In Log-Datei schreiben
+0 3 * * *  /usr/local/bin/backup.sh >> /var/log/backup.log 2>&1
+
+# Nur Fehler loggen
+0 3 * * *  /usr/local/bin/backup.sh > /dev/null 2>> /var/log/backup-errors.log
+```
+
+Alternativ: MAILTO in der Crontab setzen:
+```
+MAILTO=""          # keine Mails
+MAILTO=admin@example.com  # Mails an diese Adresse
+```
+
+Cron-Aktivitäten im Journal oder Syslog:
+```bash
+journalctl -u cron
+grep cron /var/log/syslog
+```
+
+## anacron — verpasste Jobs nachholen
+
+`cron` setzt voraus, dass das System zur geplanten Zeit läuft. Auf Laptops und
+Desktops ist das oft nicht der Fall. **anacron** löst dieses Problem:
+
+- Es prüft beim Start, welche täglich/wöchentlich/monatlich fälligen Jobs
+  zuletzt ausgeführt wurden
+- Verpasste Jobs werden **nachgeholt** — mit einer konfigurierbaren Verzögerung
+  nach dem Boot
+
+```bash
+/etc/anacrontab        # anacron-Konfiguration
+```
+
+Format:
+```
+# Periode  Verzögerung  Job-ID       Befehl
+# (Tage)   (Minuten)
+1           5            cron.daily   run-parts /etc/cron.daily
+7           10           cron.weekly  run-parts /etc/cron.weekly
+@monthly    15           cron.monthly run-parts /etc/cron.monthly
+```
+
+- **Periode**: Mindestabstand in Tagen (1 = täglich, 7 = wöchentlich)
+- **Verzögerung**: Wartezeit nach dem Boot in Minuten (verhindert Lastspitzen beim Start)
+- **Job-ID**: Eindeutiger Name, unter dem der letzte Ausführungszeitpunkt gespeichert wird
+
+```bash
+# Wann wurde ein Job zuletzt ausgeführt?
+ls -la /var/spool/anacron/
+
+# anacron manuell ausführen (Trockenlauf)
+anacron -n -d          # -n: keine Verzögerung, -d: Debug-Ausgabe
+```
+
+<Aside type="note">
+Auf den meisten Desktop-Distributionen ist anacron bereits eingerichtet und
+steuert die Ausführung von `/etc/cron.daily/` etc. — cron delegiert an anacron
+weiter. Deshalb funktionieren tägliche Skripte in `/etc/cron.daily/` auch auf
+Systemen, die nicht rund um die Uhr laufen.
+</Aside>
+
+## Zugriffssteuerung
+
+Wie bei `at` gibt es `/etc/cron.allow` und `/etc/cron.deny` — mit identischer Logik:
+`cron.allow` hat Vorrang, `cron.deny` als Blacklist, ohne beide Dateien darf nur root.
