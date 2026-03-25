@@ -1,0 +1,136 @@
+---
+title: Netzwerk-Monitoring
+sidebar:
+  order: 4
+  label: Netzwerk
+---
+
+## ss — Socket-Statistiken
+
+`ss` (Socket Statistics) ist der moderne Ersatz für `netstat`:
+
+```bash
+# Alle lauschenden Dienste (TCP + UDP, mit Prozess-Info)
+sudo ss -tulpn
+
+# Nur TCP-Verbindungen
+ss -tn
+
+# Verbindungen zu einem bestimmten Port
+ss -tn dport = :443
+
+# Zusammenfassung
+ss -s
+```
+
+Ausgabe-Optionen:
+
+| Flag | Bedeutung |
+|---|---|
+| `-t` | TCP |
+| `-u` | UDP |
+| `-l` | Lauschende Sockets |
+| `-p` | Prozess-Info (PID + Name) |
+| `-n` | Keine Namensauflösung (schneller) |
+
+## nethogs — Netzwerk-Bandbreite nach Prozess
+
+`nethogs` zeigt in Echtzeit, welcher Prozess gerade wie viel Bandbreite verbraucht:
+
+```bash
+sudo dnf install nethogs   # RHEL
+sudo apt install nethogs   # Debian
+
+sudo nethogs
+sudo nethogs eth0          # nur eine Schnittstelle
+```
+
+Besonders nützlich, wenn die Leitung unerwartet voll ist und unklar ist, wer
+dafür verantwortlich ist.
+
+## iftop — Netzwerkverkehr nach Host
+
+`iftop` zeigt Bandbreite zwischen dem eigenen System und entfernten Hosts:
+
+```bash
+sudo dnf install iftop
+
+sudo iftop
+sudo iftop -i eth0         # bestimmte Schnittstelle
+sudo iftop -n              # keine DNS-Auflösung
+```
+
+Im Gegensatz zu `nethogs` zeigt `iftop` nicht den Prozess, sondern den
+Kommunikationspartner.
+
+## sar — Historische Statistiken
+
+`sar` (System Activity Reporter) aus dem Paket `sysstat` zeichnet Metriken
+periodisch auf und ermöglicht historische Auswertungen:
+
+```bash
+sudo dnf install sysstat
+sudo systemctl enable --now sysstat
+
+# CPU-Auslastung heute
+sar -u
+
+# Netzwerk-Statistiken heute
+sar -n DEV
+
+# Netzwerk heute, stündliche Zusammenfassung
+sar -n DEV -f /var/log/sa/sa$(date +%d)
+
+# Gestern
+sar -u -f /var/log/sa/sa$(date -d yesterday +%d)
+```
+
+Häufig verwendete `sar`-Optionen:
+
+| Option | Inhalt |
+|---|---|
+| `-u` | CPU-Auslastung |
+| `-r` | RAM und Swap |
+| `-b` | I/O-Statistiken |
+| `-n DEV` | Netzwerk-Schnittstellen |
+| `-n TCP` | TCP-Verbindungsstatistiken |
+| `-q` | Load Average und Run-Queue |
+
+Besonders wertvoll für die Fehleranalyse: "Was war gestern Nacht um 3 Uhr auf
+dem Server los?" — mit `sar` lässt sich das nachvollziehen.
+
+## ping, traceroute, mtr
+
+```bash
+# Erreichbarkeit testen
+ping -c 4 8.8.8.8
+
+# Route verfolgen
+traceroute 8.8.8.8
+
+# mtr — kombiniert ping + traceroute, live
+sudo dnf install mtr
+mtr 8.8.8.8
+mtr --report 8.8.8.8    # kompakter Report-Modus
+```
+
+## Schnelldiagnose Netzwerk
+
+```bash
+# Schnittstellen und IP-Adressen
+ip addr show
+
+# Routing-Tabelle
+ip route show
+
+# DNS-Auflösung testen
+dig example.com
+nslookup example.com
+
+# Offene Ports von außen testen
+sudo nmap -sS -p 22,80,443 localhost
+
+# HTTP-Anfrage manuell
+curl -I https://example.com
+curl -v https://example.com 2>&1 | head -30
+```

@@ -1,0 +1,136 @@
+---
+title: Disk und I/O
+sidebar:
+  order: 3
+  label: Disk & I/O
+---
+
+## df — Speicherplatz der Dateisysteme
+
+```bash
+# Alle eingehängten Dateisysteme
+df -h
+
+# Nur echte Dateisysteme (keine tmpfs usw.)
+df -h -x tmpfs -x devtmpfs
+
+# Inodes anzeigen (wenn viele kleine Dateien das Problem sind)
+df -i
+```
+
+Beispiel:
+```
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1        50G   23G   25G  48% /
+/dev/sda2       200G  180G   20G  90% /var
+tmpfs           7.8G     0  7.8G   0% /dev/shm
+```
+
+Bei `Use%` über 90% wird es eng. Über 95% können Dienste nicht mehr schreiben.
+
+## du — Speicherverbrauch von Verzeichnissen
+
+```bash
+# Größe eines Verzeichnisses
+du -sh /var/log/
+
+# Top 10 größte Verzeichnisse unter /var
+du -h /var/* 2>/dev/null | sort -rh | head -10
+
+# Rekursive Übersicht, eine Ebene
+du -h --max-depth=1 /var/
+
+# Größte Dateien finden
+find /var -type f -printf '%s %p\n' 2>/dev/null | sort -rn | head -20
+```
+
+## iotop — Disk-I/O nach Prozess
+
+`iotop` zeigt, welcher Prozess gerade die Festplatte belastet:
+
+```bash
+sudo dnf install iotop   # RHEL
+sudo apt install iotop   # Debian
+
+sudo iotop
+sudo iotop -o            # nur aktive Prozesse anzeigen
+```
+
+Spalten: `DISK READ`, `DISK WRITE` — welcher Prozess schreibt/liest wie viel.
+
+## iostat — I/O-Statistiken
+
+`iostat` aus dem Paket `sysstat` liefert detaillierte I/O-Statistiken pro Gerät:
+
+```bash
+sudo dnf install sysstat
+
+# Einmaliger Snapshot
+iostat -h
+
+# Alle 2 Sekunden
+iostat -h 2
+
+# Erweiterter Modus mit mehr Details
+iostat -xh 2
+```
+
+Wichtige Spalten in `iostat -x`:
+
+| Spalte | Bedeutung |
+|---|---|
+| `r/s` | Leseanfragen pro Sekunde |
+| `w/s` | Schreibanfragen pro Sekunde |
+| `rkB/s` | Gelesene kB pro Sekunde |
+| `wkB/s` | Geschriebene kB pro Sekunde |
+| `await` | Durchschnittliche Wartezeit (ms) |
+| `%util` | Auslastung des Geräts — nahe 100% = Engpass |
+
+## lsof — Offene Dateien
+
+`lsof` (List Open Files) zeigt, welche Prozesse welche Dateien geöffnet haben:
+
+```bash
+# Alle offenen Dateien (viel Output)
+sudo lsof | head -20
+
+# Offene Dateien eines Prozesses
+sudo lsof -p 1234
+
+# Welcher Prozess hält eine Datei offen?
+sudo lsof /var/log/syslog
+
+# Offene Netzwerkverbindungen (wie ss/netstat)
+sudo lsof -i
+
+# Dateien eines Benutzers
+sudo lsof -u apache
+```
+
+Besonders nützlich: Wenn ein Dateisystem nicht auszuhängen ist, weil "device is busy":
+```bash
+sudo lsof /mount/punkt
+```
+zeigt, welcher Prozess das Verzeichnis noch geöffnet hat.
+
+## Festplattengesundheit (SMART)
+
+```bash
+sudo dnf install smartmontools
+
+# Status einer Festplatte
+sudo smartctl -a /dev/sda
+
+# Kurztest
+sudo smartctl -t short /dev/sda
+sudo smartctl -a /dev/sda    # Ergebnis nach ~2 min
+
+# Alle Festplatten überprüfen
+for disk in /dev/sd?; do
+  echo "=== $disk ==="
+  sudo smartctl -H "$disk"
+done
+```
+
+`SMART overall-health self-assessment test result: PASSED` — alles in Ordnung.
+`FAILED!` — Festplatte ersetzen, sofort Backup erstellen.

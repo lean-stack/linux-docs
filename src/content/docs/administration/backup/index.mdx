@@ -1,0 +1,78 @@
+---
+title: Backup
+sidebar:
+  order: 1
+  label: Konzept
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+Ein Backup ist die einzige Absicherung gegen Datenverlust — durch Hardware-Fehler,
+versehentliches Löschen, Ransomware oder fehlerhafte Updates. Die Grundregel: Ein
+Backup, das nicht regelmäßig getestet wird, ist kein Backup.
+
+## Die 3-2-1-Regel
+
+Die bewährteste Faustregel für Backup-Strategien:
+
+```
+3 Kopien der Daten
+  ├── 2 auf unterschiedlichen Medien/Systemen
+  └── 1 außerhalb des eigenen Standorts (offsite)
+```
+
+**Beispiel:**
+- Original: Produktionssystem
+- Kopie 1: Backup-Festplatte am gleichen Server
+- Kopie 2: NAS im Netzwerk oder Cloud-Speicher (offsite)
+
+<Aside type="caution">
+RAID ist **kein** Backup. RAID schützt gegen Hardware-Ausfall einer Festplatte,
+aber nicht gegen versehentliches Löschen, Ransomware oder Benutzerfehler — diese
+Fehler werden sofort auf alle Platten repliziert.
+</Aside>
+
+## Backup-Typen
+
+| Typ | Beschreibung | Vorteil | Nachteil |
+|---|---|---|---|
+| **Vollbackup** | Alle Daten werden kopiert | Einfach, schnell wiederherstellbar | Viel Speicher, dauert lang |
+| **Inkrementell** | Nur Änderungen seit letztem Backup | Schnell, wenig Speicher | Wiederherstellung aufwendig |
+| **Differenziell** | Alle Änderungen seit letztem Vollbackup | Kompromiss | Wächst mit der Zeit |
+| **Snapshot** | Konsistenter Zustand zu einem Zeitpunkt | Schnell (CoW) | Plattformabhängig |
+
+## Werkzeuge im Überblick
+
+| Werkzeug | Stärken | Typischer Einsatz |
+|---|---|---|
+| `rsync` | Effiziente Synchronisation, inkrementell | Datei-Backups, Server-Sync |
+| `tar` | Archivierung, komprimiert, portabel | Einzel-Snapshots, Transfer |
+| **BorgBackup** | Deduplizierung, Verschlüsselung, Effizienz | Server-Backups, NAS |
+| **restic** | Verschlüsselung, Cloud-Support | Laptop, Cloud-Backups |
+
+<CardGrid>
+  <Card title="rsync" icon="document">
+    Synchronisation von Verzeichnissen lokal und über SSH
+  </Card>
+  <Card title="tar" icon="document">
+    Klassische Archivierung mit Komprimierung
+  </Card>
+  <Card title="BorgBackup" icon="document">
+    Deduplizierendes, verschlüsseltes Backup-System
+  </Card>
+</CardGrid>
+
+## Was sichern?
+
+Nicht alle Daten sind gleich wichtig. Priorisierung hilft:
+
+**Kritisch** (immer sichern):
+- Konfigurationsdateien: `/etc/`
+- Benutzerdaten: `/home/`
+- Datenbanken: separat sichern (konsistenter Dump)
+- SSL-Zertifikate, SSH-Keys
+
+**Nicht notwendig** (rekonstruierbar):
+- Installierte Software — kann neu installiert werden
+- `/tmp/`, `/var/cache/`, `/proc/`, `/sys/`
+- System-Binaries (aus Paketen rekonstruierbar)

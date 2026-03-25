@@ -1,0 +1,159 @@
+---
+title: SELinux
+sidebar:
+  order: 1
+  label: Konzept
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**SELinux** (Security-Enhanced Linux) ist ein Mandatory Access Control-System
+(MAC), das tief im Linux-Kernel verankert ist. Es ergänzt die klassischen
+Unix-Dateirechte um eine zweite, unabhängige Sicherheitsebene.
+
+## DAC vs. MAC
+
+Die klassischen Unix-Rechte (`rwx`, `chmod`, `chown`) sind **Discretionary
+Access Control (DAC)**: Der Eigentümer einer Datei entscheidet, wer Zugriff
+bekommt. Root darf alles.
+
+SELinux implementiert **Mandatory Access Control (MAC)**: Eine zentrale
+**Policy** definiert, was erlaubt ist — unabhängig davon, wer die Datei
+besitzt. Selbst root unterliegt den SELinux-Regeln.
+
+```
+Zugriff auf eine Datei:
+
+  Prozess → Linux-Kernel → DAC-Check (rwx)  → DENIED → Abbruch
+                         → SELinux-Check     → DENIED → Abbruch
+                         → Zugriff erlaubt
+```
+
+Beide Checks müssen bestehen. SELinux kann DAC nicht aushebeln.
+
+## Modi
+
+SELinux läuft in einem von drei Modi:
+
+| Modus | Verhalten |
+|---|---|
+| `enforcing` | Policy wird durchgesetzt — Verstöße werden blockiert und geloggt |
+| `permissive` | Policy wird **nicht** durchgesetzt — Verstöße werden nur geloggt |
+| `disabled` | SELinux komplett deaktiviert |
+
+```bash
+getenforce                    # aktueller Modus
+sestatus                      # ausführlicher Status inkl. Policy
+
+sudo setenforce 0             # → permissive (bis zum Neustart)
+sudo setenforce 1             # → enforcing  (bis zum Neustart)
+```
+
+Dauerhafter Modus in `/etc/selinux/config`:
+
+```
+SELINUX=enforcing     # enforcing | permissive | disabled
+SELINUXTYPE=targeted  # Policy-Typ
+```
+
+<Aside type="caution">
+`disabled` erfordert einen Neustart und führt dazu, dass alle Dateien ohne
+SELinux-Kontext erstellt werden. Das Wiedereinschalten erzwingt ein komplettes
+Relabeling des Dateisystems — was lange dauern kann. Besser `permissive`
+nutzen statt `disabled`.
+</Aside>
+
+## Policies
+
+Die **Policy** definiert alle erlaubten Aktionen. Auf RHEL ist standardmäßig
+die **targeted**-Policy aktiv: Nur bestimmte, sicherheitskritische Prozesse
+(Apache, SSH, MariaDB, ...) werden eingeschränkt (`confined`). Alle anderen
+laufen `unconfined` — ohne SELinux-Einschränkungen.
+
+```bash
+sestatus | grep "Loaded policy"
+# Loaded policy name:         targeted
+```
+
+## Kontexte (Labels)
+
+Jedes Objekt im System — Dateien, Prozesse, Ports, Sockets — trägt einen
+**Sicherheitskontext** (Label). Er besteht aus vier Teilen:
+
+```
+system_u:object_r:httpd_sys_content_t:s0
+────────  ────────  ───────────────────  ──
+  User     Role          Type           Level
+```
+
+- **User** (`system_u`, `unconfined_u`, ...): SELinux-Benutzer
+- **Role** (`object_r` für Dateien, `system_r` für Prozesse): Rolle
+- **Type**: Das entscheidende Feld — Policy-Regeln basieren fast ausschließlich
+  auf Typen (**Type Enforcement**)
+- **Level**: MLS-Sicherheitsstufe (meist `s0`, nur bei MLS-Policy relevant)
+
+Kontexte anzeigen:
+
+```bash
+ls -Z /var/www/html               # Datei-Kontext
+ls -Z /etc/ssh/sshd_config
+ps auxZ | grep httpd              # Prozess-Kontext
+id -Z                             # eigener Kontext
+ss -Z                             # Socket-Kontext
+```
+
+Beispielausgabe:
+```
+-rw-r--r--. root root system_u:object_r:httpd_sys_content_t:s0 index.html
+```
+
+## Type Enforcement
+
+Die Kernregel: Ein Prozess mit Typ `httpd_t` darf auf Dateien mit Typ
+`httpd_sys_content_t` zugreifen — aber nicht auf `shadow_t` (Passwort-Hashes)
+oder `samba_share_t` (Samba-Freigaben). Die Policy legt für jede
+Typ-Kombination fest, welche Operationen erlaubt sind.
+
+Häufige Typen:
+
+| Typ | Bedeutung |
+|---|---|
+| `httpd_t` | Apache-Prozess |
+| `httpd_sys_content_t` | Webserver-Inhalte (read-only) |
+| `httpd_sys_rw_content_t` | Webserver-Inhalte (schreibbar) |
+| `sshd_t` | SSH-Daemon |
+| `samba_t` | Samba-Prozess |
+| `samba_share_t` | Samba-Freigabe |
+| `mysqld_t` | MariaDB/MySQL-Prozess |
+| `var_log_t` | Log-Dateien |
+| `user_home_t` | Benutzer-Heimatverzeichnisse |
+
+## Booleans
+
+**Booleans** sind benannte Ein/Aus-Schalter für Gruppen von Policy-Regeln.
+Sie erlauben es, häufige Sonderfälle zu aktivieren, ohne eigene Policy schreiben
+zu müssen:
+
+```bash
+getsebool -a                          # alle Booleans anzeigen
+getsebool httpd_can_network_connect   # einzelnen Boolean anzeigen
+getsebool -a | grep httpd             # httpd-Booleans filtern
+
+sudo setsebool httpd_can_network_connect 1     # aktivieren (bis Neustart)
+sudo setsebool -P httpd_can_network_connect 1  # aktivieren (dauerhaft)
+```
+
+Häufig genutzte Booleans:
+
+| Boolean | Bedeutung |
+|---|---|
+| `httpd_can_network_connect` | Apache darf Netzwerkverbindungen aufbauen |
+| `httpd_can_network_connect_db` | Apache darf Datenbankverbindungen aufbauen |
+| `httpd_unified` | Apache darf Webroot-Dateien schreiben |
+| `httpd_enable_homedirs` | Apache darf Heimatverzeichnisse lesen |
+| `samba_enable_home_dirs` | Samba darf Heimatverzeichnisse freigeben |
+| `samba_export_all_rw` | Samba darf beliebige Verzeichnisse freigeben |
+| `ssh_chroot_rw_homedirs` | SSH-Chroot mit schreibbarem Homedir |
+
+Die Troubleshooting-Praxis — wenn etwas trotz korrekter DAC-Rechte nicht
+funktioniert — ist im nächsten Kapitel beschrieben: [SELinux-Praxis](./praxis).

@@ -1,0 +1,203 @@
+---
+title: BorgBackup
+sidebar:
+  order: 4
+  label: BorgBackup
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**BorgBackup** (kurz: Borg) ist ein modernes Backup-Werkzeug mit Deduplizierung,
+Komprimierung und Verschlüsselung. Statt jedes Mal alles zu kopieren, zerlegt Borg
+Daten in Blöcke und speichert gleiche Blöcke nur einmal — auch über verschiedene
+Backups hinweg.
+
+## Vorteile gegenüber rsync/tar
+
+| Merkmal | rsync | tar | BorgBackup |
+|---|---|---|---|
+| Deduplizierung | — | — | ✓ |
+| Verschlüsselung | — | — | ✓ |
+| Komprimierung | — | ✓ | ✓ |
+| Viele Versionen | mit Hard-Links | manuell | nativ |
+| Remote-Backup | ✓ (SSH) | — | ✓ (SSH) |
+| Integrität prüfen | — | — | ✓ |
+
+## Installation
+
+```bash
+# RHEL/Fedora
+sudo dnf install borgbackup
+
+# Debian/Ubuntu
+sudo apt install borgbackup
+```
+
+## Konzepte
+
+- **Repository**: Das Backup-Ziel — ein Verzeichnis, das Borg verwaltet
+- **Archiv**: Ein einzelner Backup-Snapshot im Repository (benannt z.B. `server-2025-01-15`)
+- **Deduplizierung**: Gleiche Datenblöcke werden nur einmal gespeichert — auch über Archive hinweg
+
+## Workflow
+
+### 1. Repository initialisieren
+
+```bash
+# Lokal (unverschlüsselt)
+borg init --encryption=none /backup/mein-repo
+
+# Lokal mit Verschlüsselung
+borg init --encryption=repokey /backup/mein-repo
+
+# Remote über SSH
+borg init --encryption=repokey user@backup-server:/backup/mein-repo
+```
+
+Bei `repokey` wird der Verschlüsselungsschlüssel im Repository gespeichert und
+durch ein Passphrase geschützt. Das Passphrase wird beim Init abgefragt.
+
+<Aside type="caution">
+Den Schlüssel exportieren und sicher aufbewahren — ohne ihn sind die Backups
+unwiederbringlich verloren:
+```bash
+borg key export /backup/mein-repo /sicherer-ort/borg-key.txt
+```
+</Aside>
+
+### 2. Backup erstellen
+
+```bash
+borg create /backup/mein-repo::server-{now:%Y-%m-%d} \
+  /home \
+  /etc \
+  --exclude /home/*/.cache \
+  --exclude /home/*/.local/share/Trash \
+  --compression lz4
+```
+
+- `::server-{now:%Y-%m-%d}` — Archivname mit aktuellem Datum
+- `--compression lz4` — schnelle Komprimierung (Alternativen: `zstd`, `lzma`)
+
+### 3. Archive auflisten
+
+```bash
+# Alle Archive im Repository
+borg list /backup/mein-repo
+
+# Inhalt eines Archives anzeigen
+borg list /backup/mein-repo::server-2025-01-15
+```
+
+### 4. Wiederherstellen
+
+```bash
+# Gesamtes Archiv extrahieren
+cd /restore
+borg extract /backup/mein-repo::server-2025-01-15
+
+# Nur bestimmte Dateien
+borg extract /backup/mein-repo::server-2025-01-15 home/micha/.bashrc
+
+# Einzelne Datei anzeigen (ohne zu extrahieren)
+borg extract --stdout /backup/mein-repo::server-2025-01-15 home/micha/.bashrc
+```
+
+### 5. Integrität prüfen
+
+```bash
+borg check /backup/mein-repo
+```
+
+Prüft Repository-Integrität und Vollständigkeit aller Archive.
+
+### 6. Alte Archive löschen (Pruning)
+
+```bash
+borg prune /backup/mein-repo \
+  --keep-daily=7 \
+  --keep-weekly=4 \
+  --keep-monthly=6 \
+  --list
+```
+
+Behält die letzten 7 Tages-, 4 Wochen- und 6 Monatsbackups — alle älteren werden
+gelöscht. `--list` zeigt an, was behalten und was gelöscht wird.
+
+## Automatisiertes Backup-Skript
+
+```bash
+#!/bin/bash
+# /usr/local/bin/borg-backup.sh
+
+export BORG_REPO=/backup/mein-repo
+export BORG_PASSPHRASE='geheimes-passphrase'  # oder aus Datei lesen
+
+ARCHIV_NAME="server-{now:%Y-%m-%dT%H:%M}"
+LOG=/var/log/borg-backup.log
+
+echo "$(date): Starte Backup" >> "$LOG"
+
+borg create \
+  --compression lz4 \
+  --exclude-caches \
+  --exclude "/home/*/.cache" \
+  "$BORG_REPO::$ARCHIV_NAME" \
+  /home /etc /var/www \
+  >> "$LOG" 2>&1
+
+borg prune \
+  --keep-daily=7 \
+  --keep-weekly=4 \
+  --keep-monthly=3 \
+  "$BORG_REPO" \
+  >> "$LOG" 2>&1
+
+echo "$(date): Backup abgeschlossen" >> "$LOG"
+```
+
+<Aside type="note">
+Das Passphrase im Skript zu speichern ist praktisch, aber nicht ideal. Sicherer:
+in einer Datei mit `chmod 600`:
+```bash
+export BORG_PASSPHRASE=$(cat /root/.borg-passphrase)
+```
+</Aside>
+
+## Borgmatic — Borg mit Konfigurationsdatei
+
+**borgmatic** ist ein Wrapper um Borg, der alle Parameter in einer YAML-Datei
+bündelt:
+
+```bash
+sudo dnf install borgmatic  # oder: pip3 install borgmatic
+```
+
+Konfiguration `/etc/borgmatic/config.yaml`:
+```yaml
+source_directories:
+  - /home
+  - /etc
+
+repositories:
+  - path: /backup/mein-repo
+    label: lokal
+
+exclude_patterns:
+  - "*/.cache"
+
+retention:
+  keep_daily: 7
+  keep_weekly: 4
+  keep_monthly: 6
+
+compression: lz4
+encryption_passphrase: "geheimes-passphrase"
+```
+
+```bash
+borgmatic create   # Backup erstellen
+borgmatic prune    # Alte Archive löschen
+borgmatic check    # Integrität prüfen
+borgmatic          # Alles in einem Schritt
+```

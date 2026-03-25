@@ -1,0 +1,222 @@
+---
+title: SELinux in der Praxis
+sidebar:
+  order: 2
+  label: Praxis
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+SELinux-Probleme zeigen sich oft indirekt: Ein Dienst startet nicht, eine Datei
+ist nicht erreichbar, ein Skript schlägt fehl — obwohl die Unix-Rechte korrekt
+sind. Der erste Schritt ist immer: ins Audit-Log schauen.
+
+## Troubleshooting-Workflow
+
+```
+Dienst funktioniert nicht, obwohl Rechte stimmen
+        │
+        ▼
+sudo ausearch -m avc -ts recent
+        │
+        ├── keine Einträge → kein SELinux-Problem
+        │
+        └── AVC-Einträge gefunden
+                │
+                ├── audit2why   → verständliche Erklärung
+                ├── audit2allow → Policy-Vorschlag
+                └── sealert     → freundliche Diagnose (wenn installiert)
+```
+
+## Verstöße im Audit-Log finden
+
+```bash
+# Alle SELinux-Verstöße der letzten Zeit
+sudo ausearch -m avc -ts recent
+
+# Verstöße für einen bestimmten Dienst
+sudo ausearch -m avc -ts recent -c httpd
+sudo ausearch -m avc -ts recent -c smbd
+
+# Live beobachten
+sudo tail -f /var/log/audit/audit.log | grep denied
+```
+
+Beispiel-AVC-Meldung:
+```
+type=AVC msg=audit(1234567890.123:456): avc: denied { write } for
+  pid=1234 comm="httpd" name="uploads" dev="sda1" ino=123456
+  scontext=system_u:system_r:httpd_t:s0
+  tcontext=system_u:object_r:var_t:s0
+  tclass=dir permissive=0
+```
+
+Zu lesen als: Prozess `httpd` (Typ `httpd_t`) wollte **schreiben** in ein
+Verzeichnis mit Typ `var_t` — das ist nicht erlaubt.
+
+## audit2why — Erklärung
+
+```bash
+sudo ausearch -m avc -ts recent | audit2why
+```
+
+Ausgabe erklärt die Ursache und gibt Hinweise:
+```
+type=AVC ...
+    Was it cause by:
+        Missing type enforcement (TE) allow rule.
+        You can use audit2allow to generate a loadable module to allow this access.
+    or
+        Missing boolean: httpd_unified
+        Description: Allow httpd to unified
+        Allow access by executing: setsebool -P httpd_unified 1
+```
+
+## sealert — freundliche Diagnose
+
+`sealert` aus dem Paket `setroubleshoot-server` liefert die verständlichste
+Ausgabe mit konkreten Lösungsvorschlägen:
+
+```bash
+sudo dnf install setroubleshoot-server
+sudo sealert -a /var/log/audit/audit.log
+```
+
+## Häufige Lösungen
+
+### 1. Falscher Datei-Kontext
+
+Der häufigste Fall: Dateien wurden kopiert statt verschoben, oder liegen in
+einem unerwarteten Verzeichnis — der Kontext passt nicht zur Policy.
+
+```bash
+# Aktuellen Kontext anzeigen
+ls -Z /var/www/html/wordpress
+
+# Standard-Kontext laut Policy anzeigen
+matchpathcon /var/www/html/wordpress
+
+# Kontext auf Standard zurücksetzen (einmalig)
+sudo restorecon -v /var/www/html/uploads
+sudo restorecon -Rv /var/www/html/        # rekursiv
+```
+
+Dauerhaft: wenn Dateien in einem Nicht-Standard-Pfad liegen, mit `semanage
+fcontext` eine persistente Regel definieren:
+
+```bash
+# Regel definieren
+sudo semanage fcontext -a \
+  -t httpd_sys_rw_content_t \
+  "/var/www/html/wordpress/wp-content(/.*)?"
+
+# Regel anwenden
+sudo restorecon -Rv /var/www/html/wordpress/wp-content
+
+# Alle definierten Regeln anzeigen
+sudo semanage fcontext -l | grep wordpress
+```
+
+### 2. Boolean fehlt
+
+Policy erlaubt eine Aktion grundsätzlich nicht, aber es gibt einen Boolean:
+
+```bash
+# audit2why zeigt oft direkt den Boolean:
+# "Allow access by executing: setsebool -P httpd_can_network_connect 1"
+
+sudo setsebool -P httpd_can_network_connect 1
+```
+
+### 3. Port nicht registriert
+
+Wenn ein Dienst auf einem nicht-standardmäßigen Port lauscht:
+
+```bash
+# Registrierte Ports anzeigen
+sudo semanage port -l | grep http
+
+# Port hinzufügen
+sudo semanage port -a -t http_port_t -p tcp 8080
+sudo semanage port -a -t mysqld_port_t -p tcp 3307
+```
+
+## Kontext manuell setzen
+
+```bash
+# Temporär (wird bei restorecon überschrieben)
+sudo chcon -t httpd_sys_content_t /var/www/html/meine-datei.html
+sudo chcon -R -t samba_share_t /srv/freigabe
+
+# Dauerhaft (nur mit semanage fcontext + restorecon)
+```
+
+<Aside type="caution">
+`chcon` setzt den Kontext nur temporär. Bei einem `restorecon` oder einem
+System-Relabeling wird er auf den Policy-Default zurückgesetzt. Für
+dauerhafte Änderungen immer `semanage fcontext` + `restorecon` verwenden.
+</Aside>
+
+## Permissive Mode für einen Dienst
+
+Statt das gesamte System auf `permissive` zu setzen, kann ein einzelner
+Prozesstyp in den permissiven Modus versetzt werden — praktisch zum Debuggen:
+
+```bash
+# Typ permissive schalten
+sudo semanage permissive -a httpd_t
+
+# Wieder enforcing
+sudo semanage permissive -d httpd_t
+
+# Alle permissiven Typen anzeigen
+sudo semanage permissive -l
+```
+
+## Eigene Policy-Module (Notlösung)
+
+Wenn kein Boolean hilft und der Kontext korrekt ist, kann `audit2allow` eine
+minimale Policy generieren:
+
+```bash
+sudo ausearch -m avc -ts recent | audit2allow -M mein-modul
+sudo semodule -i mein-modul.pp
+```
+
+<Aside type="caution">
+Eigene Policy-Module sind eine Notlösung. Vor dem Einsatz gut prüfen, was
+`audit2allow` vorschlägt — es erlaubt pauschal, was geblockt wurde, ohne
+Sicherheitsfolgen zu bewerten. Oft ist ein fehlender Boolean oder falscher
+Kontext die eigentliche Ursache.
+</Aside>
+
+## Cheatsheet: Die wichtigsten Befehle
+
+```bash
+# Status
+getenforce
+sestatus
+
+# Modus wechseln
+sudo setenforce 0          # → permissive
+sudo setenforce 1          # → enforcing
+
+# Kontexte
+ls -Z datei
+ps auxZ | grep prozess
+sudo restorecon -Rv /pfad
+sudo semanage fcontext -a -t TYP "/pfad(/.*)?"
+
+# Booleans
+getsebool -a | grep httpd
+sudo setsebool -P boolean_name 1
+
+# Troubleshooting
+sudo ausearch -m avc -ts recent
+sudo ausearch -m avc -ts recent | audit2why
+sudo sealert -a /var/log/audit/audit.log
+
+# Ports
+sudo semanage port -l | grep http
+sudo semanage port -a -t http_port_t -p tcp 8080
+```

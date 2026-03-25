@@ -1,0 +1,157 @@
+---
+title: Prozesse und Ressourcen
+sidebar:
+  order: 2
+  label: Prozesse & Ressourcen
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## htop — interaktiver Prozess-Monitor
+
+`htop` ist die modernere Alternative zu `top` — mit Farben, Maus-Unterstützung
+und einfacherer Bedienung:
+
+```bash
+htop
+```
+
+Wichtige Tastenkürzel in htop:
+
+| Taste | Funktion |
+|---|---|
+| `F2` | Einstellungen |
+| `F3` / `/` | Suchen |
+| `F4` | Filtern |
+| `F5` | Baum-Ansicht (Prozess-Hierarchie) |
+| `F6` | Sortierung wählen |
+| `F9` | Signal senden (Kill) |
+| `k` | Signal senden |
+| `u` | Nach Benutzer filtern |
+| `H` | Threads anzeigen/verstecken |
+| `q` | Beenden |
+
+Die Kopfzeile zeigt CPU-Auslastung pro Kern, RAM- und Swap-Verbrauch sowie
+Load Average.
+
+```bash
+# Installation falls nicht vorhanden
+sudo dnf install htop   # RHEL
+sudo apt install htop   # Debian
+```
+
+## ps — Prozess-Snapshot
+
+```bash
+# Alle Prozesse aller Benutzer
+ps aux
+
+# Mit Prozess-Hierarchie
+ps auxf
+
+# Bestimmten Prozess suchen
+ps aux | grep nginx
+
+# Sortiert nach CPU
+ps aux --sort=-%cpu | head -20
+
+# Sortiert nach RAM
+ps aux --sort=-%mem | head -20
+```
+
+Spalten in `ps aux`:
+
+| Spalte | Bedeutung |
+|---|---|
+| `USER` | Prozessbesitzer |
+| `PID` | Prozess-ID |
+| `%CPU` | CPU-Auslastung |
+| `%MEM` | RAM-Auslastung |
+| `VSZ` | Virtueller Speicher (kB) |
+| `RSS` | Echter RAM-Verbrauch (kB) |
+| `STAT` | Status (R=laufend, S=schlafend, Z=zombie) |
+| `COMMAND` | Kommando |
+
+## free — Arbeitsspeicher
+
+```bash
+free -h           # menschenlesbare Ausgabe (MB/GB)
+free -h -s 2      # alle 2 Sekunden aktualisieren
+```
+
+Beispiel-Ausgabe:
+```
+               total        used        free      shared  buff/cache   available
+Mem:           15Gi       3.2Gi       8.1Gi       512Mi       4.0Gi      11.5Gi
+Swap:         2.0Gi          0B       2.0Gi
+```
+
+- **used**: tatsächlich belegter RAM
+- **buff/cache**: Kernel-Puffer und Datei-Cache (wird bei Bedarf freigegeben)
+- **available**: tatsächlich verfügbar für neue Prozesse
+
+<Aside type="note">
+`free` zeigt oft, dass wenig RAM "free" ist — weil Linux freien RAM als
+Datei-Cache nutzt. Die **available**-Spalte zeigt den wirklich nutzbaren Wert.
+</Aside>
+
+## vmstat — System-Statistiken
+
+```bash
+# Einmaliger Snapshot
+vmstat
+
+# Alle 2 Sekunden, 5 Mal
+vmstat 2 5
+```
+
+Ausgabe-Spalten:
+
+| Gruppe | Spalte | Bedeutung |
+|---|---|---|
+| procs | `r` | Prozesse in Run-Queue (Richtwert: ≤ CPU-Kerne) |
+| procs | `b` | Prozesse blockiert (I/O-Warten) |
+| memory | `swpd` | Genutzter Swap (kB) |
+| memory | `free` | Freier RAM |
+| swap | `si`/`so` | Swap-In/Out (kB/s) — sollte 0 sein |
+| io | `bi`/`bo` | Block-I/O (Blöcke/s) |
+| cpu | `us` | User-Space CPU% |
+| cpu | `sy` | Kernel CPU% |
+| cpu | `id` | Idle% |
+| cpu | `wa` | Warten auf I/O% — hoher Wert → Disk-Problem |
+
+## glances — Alles auf einen Blick
+
+`glances` zeigt CPU, RAM, Netzwerk, Disk und Prozesse in einer Ansicht:
+
+```bash
+sudo dnf install glances
+glances
+
+# Als Web-Server (Browser-Zugriff)
+glances -w
+# → http://localhost:61208
+```
+
+Besonders nützlich für einen schnellen Gesamt-Überblick über ein System.
+
+## Load Average verstehen
+
+```bash
+uptime
+# 14:32:01 up 5 days,  3:12,  2 users,  load average: 0.52, 0.38, 0.29
+```
+
+Die drei Werte: Durchschnittliche Prozess-Last der letzten 1, 5 und 15 Minuten.
+
+Faustregel: Load Average sollte die **Anzahl der CPU-Kerne** nicht dauerhaft
+überschreiten:
+
+```bash
+# Anzahl Kerne ermitteln
+nproc
+grep -c processor /proc/cpuinfo
+```
+
+Ein 4-Kern-System mit Load 4.0 ist voll ausgelastet. Load 2.0 bedeutet 50% Auslastung.
+Load 8.0 auf einem 4-Kern-System bedeutet Überlast — Prozesse warten.

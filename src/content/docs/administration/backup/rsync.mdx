@@ -1,0 +1,148 @@
+---
+title: rsync
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`rsync` (Remote Sync) ist das Standard-Werkzeug für effiziente Datei-Synchronisation.
+Es überträgt nur geänderte Teile von Dateien — nicht alles bei jeder Ausführung.
+
+## Grundprinzip
+
+```bash
+rsync [optionen] QUELLE ZIEL
+```
+
+rsync vergleicht Quelle und Ziel anhand von Größe und Zeitstempel (oder Prüfsummen)
+und überträgt nur Unterschiede.
+
+## Wichtige Optionen
+
+| Option | Bedeutung |
+|---|---|
+| `-a` / `--archive` | Archiv-Modus: rekursiv + Rechte, Zeitstempel, Symlinks, Owner |
+| `-v` / `--verbose` | Fortschritt anzeigen |
+| `-z` / `--compress` | Komprimierung während der Übertragung |
+| `-n` / `--dry-run` | Nur anzeigen, was gemacht würde — nichts verändern |
+| `--delete` | Dateien im Ziel löschen, die in der Quelle nicht mehr existieren |
+| `--exclude` | Dateien/Verzeichnisse ausschließen |
+| `--progress` | Fortschritt pro Datei anzeigen |
+| `-P` | `--progress` + `--partial` (Unterbrechungen fortsetzbar) |
+| `--bwlimit=RATE` | Bandbreite begrenzen (z.B. `--bwlimit=10m`) |
+
+`-a` ist äquivalent zu `-rlptgoD` — fast immer der richtige Startpunkt.
+
+## Lokale Synchronisation
+
+```bash
+# Verzeichnis sichern
+rsync -av /home/micha/ /backup/micha/
+
+# Wichtig: Slash am Ende der Quelle
+rsync -av /home/micha/  /backup/micha/   # Inhalt von micha/ → backup/micha/
+rsync -av /home/micha   /backup/         # Verzeichnis micha  → backup/micha/
+```
+
+<Aside type="caution">
+Der abschließende Slash bei der Quelle ist entscheidend:
+- `rsync /home/micha/ /backup/` → kopiert den **Inhalt** von `micha/` nach `/backup/`
+- `rsync /home/micha /backup/`  → kopiert das **Verzeichnis** `micha` nach `/backup/micha/`
+</Aside>
+
+## Backup über SSH
+
+```bash
+# Lokal → Remote
+rsync -avz /home/micha/ user@server:/backup/micha/
+
+# Remote → Lokal
+rsync -avz user@server:/var/www/ /backup/webserver/
+
+# Mit SSH-Port
+rsync -avz -e "ssh -p 2222" /home/micha/ user@server:/backup/micha/
+```
+
+## Inkrementelles Backup mit --delete
+
+```bash
+# Synchronisiert exakt: Gelöschtes in der Quelle wird auch im Ziel gelöscht
+rsync -av --delete /home/micha/ /backup/micha/
+```
+
+Ohne `--delete` ist das Ziel ein additive Kopie — gelöschte Dateien bleiben im
+Backup erhalten. Je nach Anwendungsfall kann das erwünscht sein oder nicht.
+
+## Dateien ausschließen
+
+```bash
+# Einzelne Muster
+rsync -av --exclude="*.tmp" --exclude=".cache/" /home/micha/ /backup/micha/
+
+# Ausschluss-Datei
+rsync -av --exclude-from=/etc/backup-exclude.txt /home/micha/ /backup/micha/
+```
+
+Beispiel `/etc/backup-exclude.txt`:
+```
+*.tmp
+*.log
+.cache/
+.local/share/Trash/
+node_modules/
+```
+
+## Dry-Run — erst schauen, dann handeln
+
+```bash
+rsync -avn --delete /home/micha/ /backup/micha/
+```
+
+Zeigt genau an, was gemacht würde, ohne etwas zu verändern. Empfehlenswert vor
+dem ersten Einsatz und bei `--delete`.
+
+## Historische Backups mit Hard-Links
+
+Für tägliche Snapshots mit minimalem Speicherverbrauch: Hard-Links auf unveränderte
+Dateien aus dem Vortag:
+
+```bash
+#!/bin/bash
+DATUM=$(date +%Y-%m-%d)
+GESTERN=$(date -d yesterday +%Y-%m-%d)
+QUELLE=/home/
+ZIEL=/backup/snapshots
+
+rsync -av --delete \
+  --link-dest="$ZIEL/$GESTERN" \
+  "$QUELLE" "$ZIEL/$DATUM/"
+```
+
+Jedes Verzeichnis `snapshots/2025-01-15/` sieht wie ein vollständiges Backup aus,
+belegt aber nur den Speicher der tatsächlich geänderten Dateien.
+
+## Typische Backup-Skript-Vorlage
+
+```bash
+#!/bin/bash
+# /usr/local/bin/backup-home.sh
+
+QUELLE=/home/
+ZIEL=/backup/home/
+LOG=/var/log/backup.log
+
+rsync -av --delete \
+  --exclude="*.tmp" \
+  --exclude=".cache/" \
+  "$QUELLE" "$ZIEL" >> "$LOG" 2>&1
+
+echo "$(date): Backup abgeschlossen" >> "$LOG"
+```
+
+Als systemd-Timer oder Cron-Job täglich ausführen:
+
+```bash
+# Crontab: täglich um 2:30 Uhr
+30 2 * * * /usr/local/bin/backup-home.sh
+```

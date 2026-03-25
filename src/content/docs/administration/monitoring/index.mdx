@@ -1,0 +1,83 @@
+---
+title: Monitoring
+sidebar:
+  order: 1
+  label: Überblick
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+Monitoring bedeutet, den Zustand eines Systems kontinuierlich zu beobachten —
+damit Probleme erkannt werden, bevor sie den Betrieb stören. Linux bietet dafür
+eine breite Palette an Werkzeugen: von einfachen Kommandozeilen-Tools bis zu
+professionellen Monitoring-Stacks.
+
+## Was wird überwacht?
+
+| Ressource | Typische Fragen |
+|---|---|
+| **CPU** | Ausgelastet? Welcher Prozess? |
+| **RAM** | Wie viel frei? Swap im Einsatz? |
+| **Disk** | I/O zu hoch? Welche Partition voll? |
+| **Netzwerk** | Welcher Prozess sendet viel? Paketfehler? |
+| **Prozesse** | Läuft der Dienst? Wie viele Threads? |
+| **Logs** | Fehlermeldungen? Auffällige Muster? |
+
+## Werkzeuge im Überblick
+
+```
+Interaktiv (live):          Snapshot (einmalig):
+  htop    — Prozesse          ps aux
+  iotop   — Disk-I/O          free -h
+  nethogs — Netzwerk/Prozess  df -h
+  iftop   — Netzwerk/Host     ss -tulpn
+  glances — Alles in einem    lsof
+
+Historisch (Verlauf):
+  sar     — System Activity Report
+  vmstat  — Virtueller Speicher + I/O
+  iostat  — Disk-I/O-Statistiken
+```
+
+<CardGrid>
+  <Card title="Prozesse & Ressourcen" icon="laptop">
+    htop, ps, free, vmstat — was verbraucht CPU und RAM?
+  </Card>
+  <Card title="Disk & I/O" icon="seti:db">
+    iotop, iostat, df, du — Speicherplatz und Schreiblast
+  </Card>
+  <Card title="Netzwerk" icon="rocket">
+    nethogs, iftop, ss, sar — Bandbreite und Verbindungen
+  </Card>
+</CardGrid>
+
+## Ausblick: Professionelles Monitoring
+
+Für produktive Umgebungen mit mehreren Servern reichen Kommandozeilen-Tools
+nicht mehr aus. Der Standard der Branche ist der **Prometheus/Grafana-Stack**:
+
+```
+┌─────────────┐    ┌────────────┐    ┌─────────────┐
+│  Prometheus │───▶│  Grafana   │    │ Alertmanager│
+│  (Daten-    │    │ (Dashboards│    │ (Benach-    │
+│  sammlung)  │    │  + Alerts) │    │  richtigungen│
+└─────────────┘    └────────────┘    └─────────────┘
+       │
+  ┌────┴────────────────┐
+  │  Exporters (Agents) │
+  │  node_exporter      │  ← System-Metriken
+  │  blackbox_exporter  │  ← HTTP/TCP-Checks
+  │  mysqld_exporter    │  ← Datenbank
+  └─────────────────────┘
+```
+
+- **Prometheus**: Sammelt Metriken durch Abfragen von Exportern (Pull-Modell),
+  speichert als Zeitreihen
+- **node_exporter**: Läuft auf jedem Server und stellt CPU/RAM/Disk/Netzwerk-
+  Metriken bereit
+- **Grafana**: Visualisiert Metriken als Dashboards, wertet Logs aus (Loki),
+  sendet Alarme
+- **Alertmanager**: Empfängt Prometheus-Alarme, routet zu E-Mail/Slack/PagerDuty
+
+Dieser Stack ist für einzelne Homelab-Server ebenso einsetzbar wie für
+Infrastrukturen mit Hunderten von Servern.

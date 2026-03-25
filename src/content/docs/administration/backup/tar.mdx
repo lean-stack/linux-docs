@@ -1,0 +1,141 @@
+---
+title: tar
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`tar` (Tape ARchive) ist das klassische Unix-Werkzeug zum Erstellen von Archiven.
+Es fasst mehrere Dateien in einer einzigen Archiv-Datei zusammen und kann dabei
+optional komprimieren.
+
+## Grundlegende Optionen
+
+| Option | Bedeutung |
+|---|---|
+| `-c` | Archiv **c**reieren |
+| `-x` | Archiv e**x**trahieren |
+| `-t` | Inhalt lis**t**en |
+| `-f DATEI` | Archiv-Datei angeben (fast immer nötig) |
+| `-v` | **v**erbose — Dateien beim Verarbeiten anzeigen |
+| `-z` | gzip-Komprimierung (`.tar.gz`) |
+| `-j` | bzip2-Komprimierung (`.tar.bz2`) |
+| `-J` | xz-Komprimierung (`.tar.xz`) |
+| `-p` | Dateirechte erhalten |
+| `-C VERZ` | In Verzeichnis wechseln vor dem Extrahieren |
+
+## Archive erstellen
+
+```bash
+# Verzeichnis archivieren (ohne Komprimierung)
+tar -cf backup.tar /home/micha/
+
+# Mit gzip-Komprimierung
+tar -czf backup.tar.gz /home/micha/
+
+# Mit xz (besser, aber langsamer)
+tar -cJf backup.tar.xz /home/micha/
+
+# Rechte erhalten (wichtig für System-Backups)
+tar -czpf backup.tar.gz /etc/
+```
+
+<Aside type="note">
+Seit GNU tar 2.x erkennt tar die Komprimierung automatisch am Dateinamen — `-a`
+statt `-z`/`-j`/`-J`:
+```bash
+tar -caf backup.tar.xz /home/micha/
+```
+</Aside>
+
+## Archiv-Inhalt anzeigen
+
+```bash
+# Dateien auflisten
+tar -tf backup.tar.gz
+
+# Mit Details
+tar -tvf backup.tar.gz
+```
+
+## Archive entpacken
+
+```bash
+# Im aktuellen Verzeichnis
+tar -xzf backup.tar.gz
+
+# In ein bestimmtes Verzeichnis
+tar -xzf backup.tar.gz -C /restore/
+
+# Nur bestimmte Dateien
+tar -xzf backup.tar.gz home/micha/.bashrc
+```
+
+<Aside type="caution">
+Beim Extrahieren wird der vollständige Pfad wiederhergestellt. Ein Archiv von
+`/home/micha/` enthält Pfade wie `home/micha/...` — extrahiert nach `/restore/`
+landet alles in `/restore/home/micha/`.
+
+Um direkt nach `/restore/micha/` zu extrahieren:
+```bash
+tar -xzf backup.tar.gz --strip-components=2 -C /restore/micha/
+```
+(`--strip-components=2` entfernt die ersten zwei Pfad-Komponenten: `home/micha/`)
+</Aside>
+
+## Dateien ausschließen
+
+```bash
+tar -czf backup.tar.gz /home/micha/ \
+  --exclude="*.tmp" \
+  --exclude="/home/micha/.cache" \
+  --exclude="/home/micha/Downloads"
+```
+
+## System-Backup mit tar
+
+Vollständiges System-Backup (außer virtuellen Dateisystemen):
+
+```bash
+sudo tar -czpf /backup/system-$(date +%Y-%m-%d).tar.gz \
+  --exclude=/proc \
+  --exclude=/sys \
+  --exclude=/dev \
+  --exclude=/run \
+  --exclude=/tmp \
+  --exclude=/backup \
+  /
+```
+
+## Datenbank-Backup mit tar
+
+Datenbanken nie einfach als Dateien kopieren — stattdessen erst einen konsistenten
+Dump erstellen und diesen archivieren:
+
+```bash
+# MariaDB/MySQL
+mysqldump -u root -p --all-databases > /tmp/db-dump.sql
+tar -czf /backup/db-$(date +%Y-%m-%d).tar.gz /tmp/db-dump.sql
+rm /tmp/db-dump.sql
+
+# PostgreSQL
+pg_dumpall -U postgres > /tmp/db-dump.sql
+tar -czf /backup/db-$(date +%Y-%m-%d).tar.gz /tmp/db-dump.sql
+```
+
+## Kurzreferenz
+
+```bash
+# Erstellen
+tar -czf archiv.tar.gz verzeichnis/    # gzip
+tar -cJf archiv.tar.xz verzeichnis/   # xz (kleiner, langsamer)
+
+# Ansehen
+tar -tf  archiv.tar.gz                 # Inhalt
+tar -tvf archiv.tar.gz                 # Inhalt mit Details
+
+# Extrahieren
+tar -xzf archiv.tar.gz                 # hier
+tar -xzf archiv.tar.gz -C /ziel/      # woanders
+```
