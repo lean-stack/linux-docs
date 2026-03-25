@@ -155,13 +155,40 @@ sudo lpadmin -x BueroDrucker   # Drucker löschen
 /var/log/cups/             # Access- und Error-Log
 ```
 
-Zugriff auf das Web-Interface von anderen Rechnern erlauben:
+### Remote-Zugriff aktivieren
+
+Der einfachste Weg ist `cupsctl`:
+
+```bash
+# Remote-Zugriff, Remote-Administration und Drucker-Freigabe aktivieren
+sudo cupsctl --remote-admin --remote-any --share-printers
+sudo systemctl restart cups
+```
+
+Alternativ manuell in `/etc/cups/cupsd.conf`. Wichtig: Es gibt **drei separate
+Location-Blöcke**, die alle angepasst werden müssen — nur `/` freizuschalten
+reicht nicht für die Admin-Seiten:
 
 ```
 # /etc/cups/cupsd.conf
 Listen *:631
 
+# Web-Interface allgemein
 <Location />
+  Order allow,deny
+  Allow @LOCAL
+</Location>
+
+# Admin-Seiten — ohne diesen Block bleibt der Zugriff verweigert
+<Location /admin>
+  Order allow,deny
+  Allow @LOCAL
+</Location>
+
+# Admin-Konfiguration
+<Location /admin/conf>
+  AuthType Default
+  Require valid-user
   Order allow,deny
   Allow @LOCAL
 </Location>
@@ -170,3 +197,28 @@ Listen *:631
 ```bash
 sudo systemctl restart cups
 ```
+
+<Aside type="caution">
+CUPS verweigert HTTP Basic Authentication ohne Verschlüsselung — was zu einer
+"Access Denied"-Meldung **ohne** Login-Dialog führt. Wenn das passiert:
+
+```bash
+# In /etc/cups/cupsd.conf setzen:
+DefaultEncryption IfRequested
+```
+
+Oder CUPS über HTTPS (`https://server:631`) ansprechen.
+</Aside>
+
+### @LOCAL in virtuellen Maschinen
+
+`@LOCAL` matcht Verbindungen vom gleichen Subnetz wie eine der eigenen
+Netzwerkschnittstellen. Bei VM-Zugriff vom Host hängt das vom Netzwerk-Modus ab:
+
+| VM-Netzwerk-Modus | Host-IP aus VM-Sicht | `@LOCAL`? |
+|---|---|---|
+| NAT | 10.0.2.2 (NAT-Gateway) | ✓ (gleicher /24) |
+| Host-only | 192.168.x.1 | ✓ (gleicher Subnet) |
+| Bridge | echte LAN-IP | ✓ wenn gleicher Subnet |
+
+Bei Problemen: `Allow all` temporär zum Testen setzen, dann wieder einschränken.
