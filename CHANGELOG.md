@@ -1,6 +1,15 @@
 # Changelog
 
 
+## v1.0.1
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.0...v1.0.1)
+
+### 🏡 Chore
+
+- Update astro. ([ef5e4f7](https://github.com/lean-stack/linux-docs/commit/ef5e4f7))
+- Remove basic exam. ([cb1675c](https://github.com/lean-stack/linux-docs/commit/cb1675c))
+
 ## v1.0.0
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.0-pre.3...v1.0.0)
