@@ -1,6 +1,24 @@
 # Changelog
 
 
+## v1.0.0
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.0-pre.3...v1.0.0)
+
+### 🚀 Enhancements
+
+- Add remaining advanced topics. ([28c119d](https://github.com/lean-stack/linux-docs/commit/28c119d))
+
+### 🩹 Fixes
+
+- Precise CUPS remote access instructions. ([9551cc6](https://github.com/lean-stack/linux-docs/commit/9551cc6))
+
+### 💅 Refactors
+
+- Clean docusaurus files and add TODO ([a14cec0](https://github.com/lean-stack/linux-docs/commit/a14cec0))
+- Move root access page way up. ([7efe4ce](https://github.com/lean-stack/linux-docs/commit/7efe4ce))
+- Rewrite admin index. ([4e9b88e](https://github.com/lean-stack/linux-docs/commit/4e9b88e))
+
 ## v1.0.0-pre.3
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.0-pre.2...v1.0.0-pre.3)
