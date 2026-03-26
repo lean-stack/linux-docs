@@ -8,29 +8,27 @@ sidebar:
 import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
 
 System-Administration umfasst alle Aufgaben, die über die normale Benutzung hinausgehen
-und meist Root-Rechte erfordern. Dazu gehören unter anderem:
+und Root-Rechte erfordern. Der erste Schritt ist daher immer: den eigenen Zugang zu
+diesen Rechten verstehen — mit `su` und `sudo`.
 
-- **Benutzerverwaltung** — Konten anlegen, Gruppen verwalten, Rechte delegieren
-- **Softwareverwaltung** — Pakete installieren, aktualisieren, entfernen
-- **Datenträger** — Partitionierung, Dateisysteme, Einhängepunkte
-- **Systemstart** — Bootloader, Kernel, Init-System
-- **Netzwerk** — Schnittstellen konfigurieren, Routing, DNS
-- **Dienste** — Systemdienste starten, stoppen, automatisieren
-- **Logging** — Systemprotokolle auswerten
+Danach folgen die klassischen Administrations-Aufgaben: System einrichten, Benutzer
+verwalten, Software installieren, den Rechner zum Laufen bringen und am Laufen halten.
+Das umfasst den gesamten Weg von der Firmware über den Bootloader und Kernel bis zum
+laufenden Dienst — sowie Hardware-Erkennung, Netzwerk, Dateisysteme und Logging.
 
-Für all diese Aufgaben sind die Grundlagen-Werkzeuge (Shell, Dateiverwaltung, Filter,
-Suche) unverzichtbar — ergänzt durch jeweils spezialisierte Tools.
+Abgeschlossen wird die Sektion mit betrieblichen Themen: Sicherheit mit SELinux,
+Praxis-Szenarien (Firewall, Webserver, Dateifreigabe), Datensicherung und Monitoring.
 
 ## Distributionsunterschiede
 
-Manche Aspekte der Administration unterscheiden sich stark zwischen Distributionen —
-insbesondere die **Software-Verwaltung** (apt vs. dnf vs. zypper) und
-Konfigurationsdatei-Pfade. Andere Bereiche wie die **Benutzerverwaltung** sind
-nahezu identisch.
+Manche Bereiche unterscheiden sich stark zwischen Distributionen — insbesondere die
+**Paketverwaltung** (apt vs. dnf vs. zypper) und einzelne Konfigurationspfade.
+Andere Bereiche wie **Benutzerverwaltung** oder **Systemstart** sind distributionsübergreifend
+nahezu identisch. Praxis-Beispiele in dieser Sektion sind auf **RHEL/Fedora** ausgerichtet.
 
 ## systemd als gemeinsame Basis
 
-Auf den meisten modernen Linux-Distributionen übernimmt `systemd` eine zentrale Rolle —
+Auf allen modernen Linux-Distributionen übernimmt `systemd` eine zentrale Rolle —
 weit über den reinen Systemstart hinaus:
 
 <Aside type="note">
@@ -45,29 +43,38 @@ systemd kümmert sich unter anderem um:
 - **Systemstart** — startet alle Dienste in der richtigen Reihenfolge
 - **Dienstverwaltung** — `systemctl start/stop/enable/disable`
 - **Logging** — `journald` mit Abfrage via `journalctl`
+- **Zeitplanung** — systemd Timer als Alternative zu cron
 - **Netzwerk** — `systemd-networkd` für einfache Netzwerkkonfiguration
 - **Zeit** — `systemd-timesyncd` für NTP-Synchronisation
 - **Lokalisierung** — `localectl` für Sprache und Tastatur
 - **Hostname** — `hostnamectl`
 
+## Inhalt
+
 <CardGrid>
+  <Card title="Root-Zugang" icon="shield">
+    su, sudo, visudo — wie Root-Rechte erlangt und delegiert werden
+  </Card>
+  <Card title="Systemgrundlagen" icon="setting">
+    Lokalisierung, Zeitzone, Tastaturlayout — grundlegende Systemeinrichtung
+  </Card>
   <Card title="Benutzerverwaltung" icon="person">
-    Benutzer und Gruppen anlegen, sudo einrichten
+    Benutzer und Gruppen anlegen, erweiterte Rechte (SetUID, ACLs)
   </Card>
   <Card title="Paketverwaltung" icon="puzzle">
-    Software installieren, aktualisieren und entfernen
+    Software installieren, aktualisieren, entfernen — dnf, apt, zypper
   </Card>
   <Card title="Systemstart" icon="rocket">
-    Boot-Vorgang, GRUB und systemd verstehen
-  </Card>
-  <Card title="Netzwerk" icon="laptop">
-    Netzwerkkarten konfigurieren, iproute2 nutzen
+    Firmware, Bootloader, Kernel, initramfs, systemd-Units
   </Card>
   <Card title="Hardware" icon="seti:config">
     Hardware erkennen, Kernel-Module, udev, Inventar-Werkzeuge
   </Card>
+  <Card title="Netzwerk" icon="laptop">
+    Schnittstellen konfigurieren, iproute2, NetworkManager
+  </Card>
   <Card title="Datenträger" icon="seti:db">
-    Partitionieren, formatieren, einhängen
+    Partitionieren, Dateisysteme formatieren, einhängen, LVM
   </Card>
   <Card title="Logging" icon="document">
     journalctl, dmesg, rsyslog, syslog-ng, logrotate
@@ -75,22 +82,19 @@ systemd kümmert sich unter anderem um:
   <Card title="Zeitplanung" icon="clock">
     at, cron, anacron, systemd Timer
   </Card>
-  <Card title="Drucken" icon="document">
+  <Card title="Drucken" icon="open-book">
     CUPS, Drucker einrichten, lp, lpr, lpq
   </Card>
+  <Card title="SELinux" icon="shield">
+    Mandatory Access Control, Kontexte, Troubleshooting
+  </Card>
   <Card title="Praxis" icon="rocket">
-    Firewall, WordPress, Samba — vollständige Einrichtungsszenarien
+    Firewall, WordPress (LAMP), Samba — vollständige Einrichtungsszenarien
   </Card>
   <Card title="Backup" icon="document">
     rsync, tar, BorgBackup — Datensicherung und Wiederherstellung
   </Card>
   <Card title="Monitoring" icon="laptop">
-    htop, iotop, sar, nethogs — Systemzustand beobachten
-  </Card>
-  <Card title="SELinux" icon="shield">
-    Mandatory Access Control, Kontexte, Troubleshooting
-  </Card>
-  <Card title="Systemgrundlagen" icon="setting">
-    Lokalisierung, Zeitzone, Tastaturlayout
+    htop, iotop, sar, nethogs — Systemzustand beobachten und analysieren
   </Card>
 </CardGrid>
