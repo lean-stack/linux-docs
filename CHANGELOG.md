@@ -1,6 +1,14 @@
 # Changelog
 
 
+## v1.0.2
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.1...v1.0.2)
+
+### 🏡 Chore
+
+- Update astro. ([f60b6c8](https://github.com/lean-stack/linux-docs/commit/f60b6c8))
+
 ## v1.0.1
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.0...v1.0.1)
