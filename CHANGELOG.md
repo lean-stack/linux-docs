@@ -1,6 +1,19 @@
 # Changelog
 
 
+## v1.0.3
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.2...v1.0.3)
+
+### 🩹 Fixes
+
+- Migrate sidebar autogenerate syntax and add site URL for Starlight v0.39+. ([5d67ee7](https://github.com/lean-stack/linux-docs/commit/5d67ee7))
+
+### 🏡 Chore
+
+- Update dependencies. ([db4b3f7](https://github.com/lean-stack/linux-docs/commit/db4b3f7))
+- Update dependencies. ([41a93d3](https://github.com/lean-stack/linux-docs/commit/41a93d3))
+
 ## v1.0.2
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.1...v1.0.2)
