@@ -4,6 +4,7 @@ import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
 export default defineConfig({
+	site: 'https://linux.lean-stack.rocks/',
 	integrations: [
 		starlight({
 			title: 'Linux Unterlagen',
@@ -21,50 +22,17 @@ export default defineConfig({
 				{
 					label: 'Grundlagen',
 					items: [
-						{
-							label: 'Anmeldung',
-							autogenerate: { directory: 'basics/anmeldung' },
-						},
-						{
-							label: 'Einführung Shell',
-							autogenerate: { directory: 'basics/shell' },
-						},
-						{
-							label: 'Hilfe & Dokumentation',
-							autogenerate: { directory: 'basics/hilfe' },
-						},
-						{
-							label: 'Verzeichnisse',
-							autogenerate: { directory: 'basics/verzeichnisse' },
-						},
-						{
-							label: 'Dateien',
-							autogenerate: { directory: 'basics/dateien' },
-						},
-						{
-							label: 'Editoren',
-							autogenerate: { directory: 'basics/editoren' },
-						},
-						{
-							label: 'Ein-/Ausgabe',
-							autogenerate: { directory: 'basics/io' },
-						},
-						{
-							label: 'Filter',
-							autogenerate: { directory: 'basics/filter' },
-						},
-						{
-							label: 'Suchen',
-							autogenerate: { directory: 'basics/suchen' },
-						},
-						{
-							label: 'Prozessverwaltung',
-							autogenerate: { directory: 'basics/prozesse' },
-						},
-						{
-							label: 'Bash-Scripting',
-							autogenerate: { directory: 'basics/scripting' },
-						},
+						{ label: 'Anmeldung',             items: [{ autogenerate: { directory: 'basics/anmeldung' } }] },
+						{ label: 'Einführung Shell',      items: [{ autogenerate: { directory: 'basics/shell' } }] },
+						{ label: 'Hilfe & Dokumentation', items: [{ autogenerate: { directory: 'basics/hilfe' } }] },
+						{ label: 'Verzeichnisse',         items: [{ autogenerate: { directory: 'basics/verzeichnisse' } }] },
+						{ label: 'Dateien',               items: [{ autogenerate: { directory: 'basics/dateien' } }] },
+						{ label: 'Editoren',              items: [{ autogenerate: { directory: 'basics/editoren' } }] },
+						{ label: 'Ein-/Ausgabe',          items: [{ autogenerate: { directory: 'basics/io' } }] },
+						{ label: 'Filter',                items: [{ autogenerate: { directory: 'basics/filter' } }] },
+						{ label: 'Suchen',                items: [{ autogenerate: { directory: 'basics/suchen' } }] },
+						{ label: 'Prozessverwaltung',     items: [{ autogenerate: { directory: 'basics/prozesse' } }] },
+						{ label: 'Bash-Scripting',        items: [{ autogenerate: { directory: 'basics/scripting' } }] },
 					],
 				},
 				{
@@ -72,20 +40,20 @@ export default defineConfig({
 					items: [
 						{ label: 'Einführung',         slug: 'administration' },
 						{ label: 'Root-Zugang',        slug: 'administration/root-zugang' },
-						{ label: 'Systemgrundlagen',   autogenerate: { directory: 'administration/systemgrundlagen' } },
-						{ label: 'Benutzerverwaltung', autogenerate: { directory: 'administration/benutzer' } },
-						{ label: 'Paketverwaltung',    autogenerate: { directory: 'administration/pakete' } },
-						{ label: 'Systemstart',        autogenerate: { directory: 'administration/systemstart' } },
-						{ label: 'Hardware',           autogenerate: { directory: 'administration/hardware' } },
-						{ label: 'Netzwerk',           autogenerate: { directory: 'administration/netzwerk' } },
-						{ label: 'Datenträger',        autogenerate: { directory: 'administration/datentraeger' } },
-						{ label: 'Logging',            autogenerate: { directory: 'administration/logging' } },
-						{ label: 'Zeitplanung',        autogenerate: { directory: 'administration/zeitplanung' } },
-						{ label: 'Drucken',            autogenerate: { directory: 'administration/drucken' } },
-						{ label: 'SELinux',            autogenerate: { directory: 'administration/selinux' } },
-						{ label: 'Praxis',             autogenerate: { directory: 'administration/praxis' } },
-						{ label: 'Backup',             autogenerate: { directory: 'administration/backup' } },
-						{ label: 'Monitoring',         autogenerate: { directory: 'administration/monitoring' } },
+						{ label: 'Systemgrundlagen',   items: [{ autogenerate: { directory: 'administration/systemgrundlagen' } }] },
+						{ label: 'Benutzerverwaltung', items: [{ autogenerate: { directory: 'administration/benutzer' } }] },
+						{ label: 'Paketverwaltung',    items: [{ autogenerate: { directory: 'administration/pakete' } }] },
+						{ label: 'Systemstart',        items: [{ autogenerate: { directory: 'administration/systemstart' } }] },
+						{ label: 'Hardware',           items: [{ autogenerate: { directory: 'administration/hardware' } }] },
+						{ label: 'Netzwerk',           items: [{ autogenerate: { directory: 'administration/netzwerk' } }] },
+						{ label: 'Datenträger',        items: [{ autogenerate: { directory: 'administration/datentraeger' } }] },
+						{ label: 'Logging',            items: [{ autogenerate: { directory: 'administration/logging' } }] },
+						{ label: 'Zeitplanung',        items: [{ autogenerate: { directory: 'administration/zeitplanung' } }] },
+						{ label: 'Drucken',            items: [{ autogenerate: { directory: 'administration/drucken' } }] },
+						{ label: 'SELinux',            items: [{ autogenerate: { directory: 'administration/selinux' } }] },
+						{ label: 'Praxis',             items: [{ autogenerate: { directory: 'administration/praxis' } }] },
+						{ label: 'Backup',             items: [{ autogenerate: { directory: 'administration/backup' } }] },
+						{ label: 'Monitoring',         items: [{ autogenerate: { directory: 'administration/monitoring' } }] },
 					],
 				},
 			],
