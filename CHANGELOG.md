@@ -1,6 +1,14 @@
 # Changelog
 
 
+## v1.0.4
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.3...v1.0.4)
+
+### 🏡 Chore
+
+- Fix pnpm-workspace.yaml - add packages field and remove sharp allowBuild. ([bead8c8](https://github.com/lean-stack/linux-docs/commit/bead8c8))
+
 ## v1.0.3
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.2...v1.0.3)
