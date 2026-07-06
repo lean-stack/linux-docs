@@ -1,6 +1,14 @@
 # Changelog
 
 
+## v1.0.5
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.4...v1.0.5)
+
+### 🏡 Chore
+
+- Update starlight. ([80e121b](https://github.com/lean-stack/linux-docs/commit/80e121b))
+
 ## v1.0.4
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.3...v1.0.4)
