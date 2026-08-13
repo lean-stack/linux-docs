@@ -1,6 +1,20 @@
 # Changelog
 
 
+## v1.0.6
+
+[compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.5...v1.0.6)
+
+### 🩹 Fixes
+
+- Create empty legacy docusaurus shrinkwrap file. ([540f5ca](https://github.com/lean-stack/linux-docs/commit/540f5ca))
+- Remove the legacy shrinkwrap. Should prevent any legacy security alerts now. ([0449ca8](https://github.com/lean-stack/linux-docs/commit/0449ca8))
+
+### 🏡 Chore
+
+- Update astro. ([491a979](https://github.com/lean-stack/linux-docs/commit/491a979))
+- Update astro and starlight. ([9c7efd0](https://github.com/lean-stack/linux-docs/commit/9c7efd0))
+
 ## v1.0.5
 
 [compare changes](https://github.com/lean-stack/linux-docs/compare/v1.0.4...v1.0.5)
