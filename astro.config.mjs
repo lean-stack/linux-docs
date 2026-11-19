@@ -11,17 +11,22 @@ export default defineConfig({
 			defaultLocale: 'de',
 			locales: { root: { label: 'Deutsch', lang: 'de' } },
 			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/lean-stack/linux-docs' }],
+			routeMiddleware: './src/navigation/section-sidebar.ts',
+			components: {
+				SiteTitle: './src/components/CourseSiteTitle.astro',
+				Sidebar: './src/components/CourseSidebar.astro',
+			},
 			sidebar: [
-				{
-					label: 'Einführung',
-					items: [
-						{ label: 'Was ist Linux?', slug: 'intro/was-ist-linux' },
-						{ label: 'Distributionen', slug: 'intro/distributionen' },
-					],
-				},
 				{
 					label: 'Grundlagen',
 					items: [
+						{
+							label: 'Einführung',
+							items: [
+								{ label: 'Was ist Linux?', slug: 'intro/was-ist-linux' },
+								{ label: 'Distributionen', slug: 'intro/distributionen' },
+							],
+						},
 						{ label: 'Anmeldung',             items: [{ autogenerate: { directory: 'basics/anmeldung' } }] },
 						{ label: 'Einführung Shell',      items: [{ autogenerate: { directory: 'basics/shell' } }] },
 						{ label: 'Hilfe & Dokumentation', items: [{ autogenerate: { directory: 'basics/hilfe' } }] },

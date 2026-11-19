@@ -1,0 +1,26 @@
+---
+import SiteTitle from '@astrojs/starlight/components/SiteTitle.astro';
+import CourseSectionLinks from './CourseSectionLinks.astro';
+---
+
+<div class="site-heading">
+	<SiteTitle />
+	<div class="section-navigation print:hidden"><CourseSectionLinks /></div>
+</div>
+
+<style>
+	.site-heading {
+		display: flex;
+		align-items: center;
+		gap: var(--sl-nav-gap);
+		min-width: 0;
+	}
+	.section-navigation {
+		display: none;
+	}
+	@media (min-width: 50rem) {
+		.section-navigation {
+			display: block;
+		}
+	}
+</style>

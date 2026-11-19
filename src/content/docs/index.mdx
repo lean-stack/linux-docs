@@ -5,13 +5,9 @@ template: splash
 hero:
   tagline: Deutschsprachige Dokumentation für den Einstieg in Linux und die Administration von Linux-Systemen.
   actions:
-    - text: Zum Einstieg
+    - text: Zu den Grundlagen
       link: /intro/was-ist-linux/
       icon: right-arrow
-    - text: Zu den Grundlagen
-      link: /basics/anmeldung/
-      icon: right-arrow
-      variant: minimal
     - text: Zur Administration
       link: /administration/
       icon: right-arrow
@@ -22,14 +18,9 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 <CardGrid stagger>
   <LinkCard
-    title="Einführung"
-    description="Was ist Linux? Was ist eine Distribution? Welche Varianten gibt es und welche passt zu mir?"
-    href="/intro/was-ist-linux/"
-  />
-  <LinkCard
     title="Grundlagen"
-    description="Anmeldung, Shell, Hilfe zur Selbsthilfe, Verzeichnisse und Dateien – die wichtigsten Konzepte für den Alltag."
-    href="/basics/anmeldung/"
+    description="Was ist Linux? Lerne Distributionen, Anmeldung, Shell, Verzeichnisse und Dateien kennen."
+    href="/intro/was-ist-linux/"
   />
   <LinkCard
     title="Administration"

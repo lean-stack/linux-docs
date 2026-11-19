@@ -1,0 +1,20 @@
+---
+import Sidebar from '@astrojs/starlight/components/Sidebar.astro';
+import CourseSectionLinks from './CourseSectionLinks.astro';
+---
+
+<div class="section-navigation"><CourseSectionLinks mobile /></div>
+<Sidebar />
+
+<style>
+	.section-navigation {
+		border-bottom: 1px solid var(--sl-color-gray-6);
+		margin-bottom: 0.75rem;
+		padding-bottom: 0.75rem;
+	}
+	@media (min-width: 50rem) {
+		.section-navigation {
+			display: none;
+		}
+	}
+</style>

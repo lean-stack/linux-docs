@@ -1,0 +1,35 @@
+---
+import { getCourseSection, sections } from '../navigation/sections';
+
+const current = getCourseSection(Astro.locals.starlightRoute.id);
+const { mobile = false } = Astro.props as { mobile?: boolean };
+---
+
+<div role={mobile ? 'group' : 'navigation'} aria-label="Kursbereiche">
+	{Object.entries(sections).map(([section, { href, label }]) => (
+		<a href={href} aria-current={section === current ? 'true' : undefined}>{label}</a>
+	))}
+</div>
+
+<style>
+	div {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.25rem 0.75rem;
+	}
+	a {
+		border-radius: 0.25rem;
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-sm);
+		font-weight: 600;
+		padding: 0.25rem 0.4rem;
+		text-decoration: none;
+	}
+	a:hover {
+		text-decoration: underline;
+	}
+	a[aria-current] {
+		background: var(--sl-color-accent-low);
+		color: var(--sl-color-text-accent);
+	}
+</style>
