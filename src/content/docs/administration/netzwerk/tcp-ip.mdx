@@ -41,6 +41,12 @@ Im Übungsnetz hat der Rechner die Adresse `192.168.1.10/24`. In dieser **CIDR-S
 `192.168.17.70/26` ist eine Geräteadresse im Block `.64–.127`. Wenn Linux diese Adresse bei `ip -br address` anzeigt, gehört die Schnittstelle zum Netz `192.168.17.64/26`. `192.168.17.130/26` gehört bereits zum nächsten Netz `192.168.17.128/26`. Die Abfrage mit `ip -br address` funktioniert auf RHEL, Debian und SUSE/openSUSE gleich.
 </Aside>
 
+<Aside type="note" title="Gateway und DNS-Server">
+Die erste nutzbare Adresse `192.168.17.65` ist eine mögliche Wahl für das Standardgateway. Das Gateway kann ebenso `192.168.17.126` sein, wenn der Router diese Adresse im Übungsnetz hat. Aus dem Präfix allein lässt sich die Gateway-Adresse nicht ableiten. Mit `ip -4 route show default` siehst du hinter `via` die konfigurierte Adresse.
+
+Der DNS-Server für die Namensauflösung kann auf einem anderen Gerät laufen, im Übungsnetz zum Beispiel unter `192.168.17.66`. Er kann auch auf dem Router laufen oder in einem anderen erreichbaren Netz liegen.
+</Aside>
+
 ### Private IPv4-Adressen und Loopback
 
 Die IPv4-Bereiche `10.0.0.0/8`, `172.16.0.0/12` und `192.168.0.0/16` sind für **private Netze** reserviert. Router leiten diese Adressen im öffentlichen Internet nicht weiter. Ein Internetrouter verwendet für private IPv4-Netze häufig **NAT** (Network Address Translation). Dabei übersetzt er die interne Absenderadresse, etwa in seine öffentliche IPv4-Adresse. Die Adresse `127.0.0.1` ist die **Loopback-Adresse** und führt zurück zum eigenen Rechner.
