@@ -1,0 +1,96 @@
+---
+title: TCP/IP-Grundlagen
+description: IP-Adressen, Subnetze, Routing, Namensauflösung und Ports anhand eines kleinen Netzwerks verstehen.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Wenn du eine Webseite öffnest, braucht dein Rechner die IP-Adresse des Servers, einen Weg dorthin und die Portnummer des Webdienstes. **TCP/IP** ist der Sammelbegriff für die Protokolle, die diese Kommunikation ermöglichen. Ein Protokoll legt fest, wie Geräte Daten austauschen.
+
+## IPv4-Adresse und Subnetz
+
+Eine **IP-Adresse** identifiziert eine Netzwerkschnittstelle für die Kommunikation per IP. Eine IPv4-Adresse besteht aus 32 Bit. Sie wird als vier Dezimalzahlen von 0 bis 255 geschrieben, etwa `192.168.1.10`. Eine Schnittstelle verbindet den Rechner mit einem Netz, beispielsweise über Ethernet oder WLAN.
+
+Im Übungsnetz hat der Rechner die Adresse `192.168.1.10/24`. In dieser **CIDR-Schreibweise** gibt `/24` die Anzahl der Bits am Anfang der Adresse an, die das Netz bestimmen. Dieselbe Information steckt in der **Subnetzmaske** `255.255.255.0`. Die ersten 24 Bits stehen in der Maske auf 1, die letzten acht auf 0.
+
+| Beispiel | Bedeutung |
+| --- | --- |
+| `192.168.1.0/24` | Subnetz. Rechner in diesem Netz haben dasselbe 24-Bit-Präfix. |
+| `192.168.1.0` | Netzadresse. Sie bezeichnet in diesem Beispiel das Subnetz selbst. |
+| `192.168.1.1` bis `192.168.1.254` | Adressen für Geräte. Das Gateway belegt hier `192.168.1.1`. |
+| `192.168.1.255` | Broadcast-Adresse für Nachrichten an alle Geräte in diesem IPv4-Subnetz. |
+
+Ein längeres Präfix ergibt kleinere Subnetze. Mit `/26` bleiben sechs Bits für Adressen innerhalb eines Subnetzes. Damit umfasst jedes Subnetz 64 Adressen. Die ersten beiden beginnen bei `192.168.1.0` und `192.168.1.64`. Unter `/26` liegen `192.168.1.10` und `192.168.1.70` also in verschiedenen Subnetzen.
+
+Die IPv4-Bereiche `10.0.0.0/8`, `172.16.0.0/12` und `192.168.0.0/16` sind für **private Netze** reserviert. Router leiten diese Adressen im öffentlichen Internet nicht weiter. Ein Internetrouter verwendet für private IPv4-Netze häufig **NAT** (Network Address Translation). Dabei übersetzt er die interne Absenderadresse, etwa in seine öffentliche IPv4-Adresse. Die Adresse `127.0.0.1` ist die **Loopback-Adresse** und führt zurück zum eigenen Rechner.
+
+## Routing, DNS und DHCP
+
+Eine **Route** beschreibt, über welche Schnittstelle und gegebenenfalls über welchen Router Linux ein Ziel erreicht. Die **Routing-Tabelle** enthält diese Wege. Im Beispiel sind Ziele wie `192.168.1.20` direkt im lokalen Netz erreichbar. Für eine Adresse außerhalb des Subnetzes kommt in diesem Aufbau die **Standardroute** zum Einsatz. Sie führt zum **Standardgateway** `192.168.1.1`, einem Router, der Pakete in andere Netze weiterleitet. Linux bevorzugt die Route mit dem längsten passenden Präfix. Die Standardroute greift, wenn keine spezifischere Route passt.
+
+Das **Domain Name System (DNS)** liefert unter anderem IP-Adressen zu Namen wie `example.org`. Für einen Aufruf von `https://example.org` ermittelt der Rechner zuerst die Adresse und wählt dann anhand der Routing-Tabelle den Weg zum Server. Bei HTTPS über TCP verbindet sich der Browser dort mit Port 443. Moderne Browser können HTTPS auch über HTTP/3 auf UDP-Port 443 nutzen.
+
+**DHCP** (Dynamic Host Configuration Protocol) kann einem Rechner seine IPv4-Adresse, Subnetzmaske, Standardgateway und DNS-Server automatisch zuweisen. Die Adresse wird dabei für eine bestimmte Zeit vergeben. In der [Netzwerkkonfiguration](./konfiguration) siehst du, wie dieselben Angaben bei einer statischen Konfiguration gesetzt werden.
+
+## IPv6
+
+IPv6-Adressen bestehen aus 128 Bit. Sie werden in acht Gruppen aus hexadezimalen Ziffern geschrieben. Führende Nullen in jeder Gruppe dürfen entfallen. Eine zusammenhängende Folge aus Nullgruppen lässt sich einmal pro Adresse als `::` abkürzen. So wird aus `2001:0db8:0001:0000:0000:0000:0000:0010` die Adresse `2001:db8:1::10`. Mit `/64` gehören die ersten vier Gruppen zum Netzpräfix. `2001:db8::/32` ist für Dokumentationsbeispiele reserviert.
+
+| Merkmal | IPv6-Beispiel |
+| --- | --- |
+| Loopback | `::1` führt zum eigenen Rechner. |
+| Link-Local | Adressen aus `fe80::/10` gelten auf dem lokalen Netzsegment. Auch IPv6-Standardgateways erscheinen oft mit einer solchen Adresse. |
+| Globale Adressen | Für die Kommunikation über Netzgrenzen können Geräte global routbare Adressen verwenden. |
+| Automatische Konfiguration | Router kündigen per **Router Advertisement** das Netz und den Weg zu anderen Netzen an. Mit **SLAAC** (Stateless Address Autoconfiguration) kann der Rechner daraus eine eigene Adresse bilden. **DHCPv6** kann je nach Netz Adressen oder weitere Einstellungen liefern. |
+| Multicast | IPv6 richtet Nachrichten an Gruppen von Empfängern und verwendet dafür Multicast. Einen IPv4-artigen Broadcast gibt es bei IPv6 nicht. |
+
+IPv4 und IPv6 können parallel auf derselben Schnittstelle laufen. Diese Betriebsart heißt **Dual Stack**.
+
+## TCP, UDP, ICMP und Ports
+
+IP transportiert Pakete zwischen Adressen. **TCP** und **UDP** verwenden zusätzlich Portnummern, damit das Betriebssystem die Daten der richtigen Anwendung zuordnet.
+
+- **TCP** baut eine Verbindung auf und übergibt der Anwendung die Daten in der richtigen Reihenfolge. Es kann verlorene Daten erneut senden. SSH und klassische HTTP-Verbindungen nutzen TCP.
+- **UDP** sendet einzelne Nachrichten ohne vorherigen Verbindungsaufbau. UDP selbst garantiert weder Zustellung noch Reihenfolge. Typische Beispiele sind kurze DNS-Anfragen und Zeitsynchronisierung mit NTP.
+- **ICMP** übermittelt Diagnose- und Fehlermeldungen auf IP-Ebene. `ping` verwendet ICMP-Echo-Anfragen und -Antworten. ICMP hat keine TCP- oder UDP-Ports. Bei IPv6 übernimmt ICMPv6 zusätzlich Aufgaben wie die Suche nach Nachbarn und Routern.
+
+Ein Server wartet üblicherweise auf einer bekannten Portnummer. Der Client verwendet dafür meist vorübergehend einen freien Quellport. Die folgenden Zuordnungen sind typische Standardwerte.
+
+| Dienst | Port und Transportprotokoll |
+| --- | --- |
+| FTP (Dateiübertragung) | TCP 21 für Steuerung, TCP 20 als Daten-Quellport im klassischen aktiven Modus |
+| SSH, Telnet (Fernanmeldung) | TCP 22, TCP 23 |
+| SMTP (Mailtransport), Submission mit TLS | TCP 25, TCP 465 |
+| DNS (Namensauflösung) | UDP und TCP 53 |
+| HTTP, HTTPS | TCP 80, TCP 443; bei HTTP/3 UDP 443 |
+| POP3, IMAP (Mailabruf) | TCP 110, TCP 143; mit TLS TCP 995 bzw. TCP 993 |
+| NTP (Zeitsynchronisierung) | UDP 123 |
+| NetBIOS-Sitzungsdienst | TCP 139 |
+| SNMP (Geräteüberwachung) | UDP 161 für Anfragen, UDP 162 für Benachrichtigungen |
+| LDAP (Verzeichnisdienst) | TCP 389; LDAP über TLS auf TCP 636 |
+| Klassisches Syslog (Protokollmeldungen) | UDP 514 |
+
+## Praxis: Die eigene Verbindung lesen
+
+Die folgenden Abfragen gelten gemeinsam für RHEL, Debian und SUSE/openSUSE. Sie brauchen keine Root-Rechte und ändern die Konfiguration nicht.
+
+```bash
+ip -br address                 # Schnittstellen mit ihren Adressen und Präfixen
+ip -4 route show               # IPv4-Routing-Tabelle
+ip -6 route show default       # IPv6-Standardroute, falls vorhanden
+ip -4 route get 192.168.1.20   # Gewählte Route zu einer Beispieladresse
+getent ahosts example.org      # Namensauflösung aus Sicht von Anwendungen
+getent services ssh/tcp        # Nachschlagen der Dienstzuordnung
+```
+
+Im Übungsnetz erscheint bei der IPv4-Standardroute `default via 192.168.1.1`. Die Route zu `192.168.1.20` nennt dort eine Schnittstelle und enthält kein `via`, weil das Ziel im selben Subnetz liegt. Auf deinem eigenen Rechner können die Adressen und Wege anders aussehen. Wähle für den Vergleich eine Zieladresse aus deinem lokalen Subnetz und eine Adresse außerhalb davon.
+
+<Aside type="tip" title="Dienstnamen nachschlagen">
+Die Datei `/etc/services` enthält lokale Zuordnungen zwischen Dienstnamen, Portnummern und Transportprotokollen. `getent services` fragt die auf dem System eingerichtete Dienstedatenbank ab. Ob ein Dienst gerade auf einem Port lauscht, zeigt dir `ss -lntu`.
+</Aside>
+
+## Prüfungsbezug
+
+Dieses Kapitel führt in [LPIC-1, Prüfung 102-500, Lernziel 109.1 – Grundlagen der Internetprotokolle](https://www.lpi.org/our-certifications/exam-101-102-objectives/#109-1) ein.
