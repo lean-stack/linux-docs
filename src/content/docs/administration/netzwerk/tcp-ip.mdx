@@ -19,8 +19,24 @@ Im Übungsnetz hat der Rechner die Adresse `192.168.1.10/24`. In dieser **CIDR-S
 | --- | --- |
 | `192.168.1.0/24` | Subnetz. Rechner in diesem Netz haben dasselbe 24-Bit-Präfix. |
 | `192.168.1.0` | Netzadresse. Sie bezeichnet in diesem Beispiel das Subnetz selbst. |
-| `192.168.1.1` bis `192.168.1.254` | Adressen für Geräte. Das Gateway belegt hier `192.168.1.1`. |
+| `192.168.1.1` bis `192.168.1.254` | Adressen für Geräte. |
 | `192.168.1.255` | Broadcast-Adresse für Nachrichten an alle Geräte in diesem IPv4-Subnetz. |
+
+### Direkt, über das Gateway oder per Name?
+
+Mit `ping` prüfst du, ob ein Gerät auf eine Echo-Anfrage antwortet. Stell dir vor, dein Rechner hat die Adresse `192.168.1.10/24`. Ein zweiter Rechner im selben Netz hat `192.168.1.20`. Der Router ist dort unter `192.168.1.1` erreichbar.
+
+```bash
+ping -4 -c 3 192.168.1.20   # Eine Adresse im eigenen Subnetz
+ping -4 -c 3 9.9.9.9        # Eine Adresse außerhalb des eigenen Subnetzes
+ping -4 -c 3 example.org    # Ein Name statt einer Adresse
+```
+
+1. **Im eigenen Subnetz.** Anhand von `/24` erkennt Linux, dass `192.168.1.20` im selben Netz liegt wie `192.168.1.10`. Der Rechner sendet die Anfrage direkt über das lokale Netz an das Ziel.
+2. **Außerhalb des Subnetzes.** Für `9.9.9.9` braucht Linux einen Weg in ein anderes Netz. Wenn der Router `192.168.1.1` als **Standardgateway** eingerichtet ist und keine speziellere Route greift, übergibt Linux ihm das Paket. Die Ziel-IP bleibt `9.9.9.9`. Der Router leitet das Paket in Richtung des Ziels weiter. Fehlt ein passender Weg, kann Linux die Anfrage nicht senden.
+3. **Mit einem Namen.** Bei `example.org` braucht `ping` zuerst eine IP-Adresse. Es nutzt dafür die Namensauflösung des Systems. Die kann einen lokalen Eintrag verwenden oder einen **DNS-Server** fragen, welche Adresse zum Namen gehört. Sobald die IPv4-Adresse feststeht, entscheidet Linux wie in den ersten beiden Fällen, welchen Weg das Paket nimmt.
+
+Die Befehle funktionieren auf RHEL, Debian und SUSE/openSUSE gleich. `-4` verwendet IPv4 und `-c 3` begrenzt den Test auf drei Anfragen. Verwende für den ersten Test die Adresse eines erreichbaren Geräts in deinem eigenen Subnetz. Eine ausbleibende Antwort kann auch daran liegen, dass das Ziel oder eine Firewall Ping-Anfragen blockiert.
 
 ### Beispiel: Was bedeutet `192.168.17.64/26`?
 
@@ -55,7 +71,7 @@ Die IPv4-Bereiche `10.0.0.0/8`, `172.16.0.0/12` und `192.168.0.0/16` sind für *
 
 Eine **Route** beschreibt, über welche Schnittstelle und gegebenenfalls über welchen Router Linux ein Ziel erreicht. Die **Routing-Tabelle** enthält diese Wege. Im Beispiel sind Ziele wie `192.168.1.20` direkt im lokalen Netz erreichbar. Für eine Adresse außerhalb des Subnetzes kommt in diesem Aufbau die **Standardroute** zum Einsatz. Sie führt zum **Standardgateway** `192.168.1.1`, einem Router, der Pakete in andere Netze weiterleitet. Linux bevorzugt die Route mit dem längsten passenden Präfix. Die Standardroute greift, wenn keine spezifischere Route passt.
 
-Das **Domain Name System (DNS)** liefert unter anderem IP-Adressen zu Namen wie `example.org`. Für einen Aufruf von `https://example.org` ermittelt der Rechner zuerst die Adresse und wählt dann anhand der Routing-Tabelle den Weg zum Server. Bei HTTPS über TCP verbindet sich der Browser dort mit Port 443. Moderne Browser können HTTPS auch über HTTP/3 auf UDP-Port 443 nutzen.
+Das **Domain Name System (DNS)** liefert unter anderem IP-Adressen zu Namen wie `example.org`. Das gilt auch für den Browser, wenn er `https://example.org` aufruft. Bei HTTPS über TCP verbindet sich der Browser dort mit Port 443. Moderne Browser können HTTPS auch über HTTP/3 auf UDP-Port 443 nutzen.
 
 **DHCP** (Dynamic Host Configuration Protocol) kann einem Rechner seine IPv4-Adresse, Subnetzmaske, Standardgateway und DNS-Server automatisch zuweisen. Die Adresse wird dabei für eine bestimmte Zeit vergeben. In der [Netzwerkkonfiguration](./konfiguration) siehst du, wie dieselben Angaben bei einer statischen Konfiguration gesetzt werden.
 
