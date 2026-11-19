@@ -22,7 +22,26 @@ Im Übungsnetz hat der Rechner die Adresse `192.168.1.10/24`. In dieser **CIDR-S
 | `192.168.1.1` bis `192.168.1.254` | Adressen für Geräte. Das Gateway belegt hier `192.168.1.1`. |
 | `192.168.1.255` | Broadcast-Adresse für Nachrichten an alle Geräte in diesem IPv4-Subnetz. |
 
-Ein längeres Präfix ergibt kleinere Subnetze. Mit `/26` bleiben sechs Bits für Adressen innerhalb eines Subnetzes. Damit umfasst jedes Subnetz 64 Adressen. Die ersten beiden beginnen bei `192.168.1.0` und `192.168.1.64`. Unter `/26` liegen `192.168.1.10` und `192.168.1.70` also in verschiedenen Subnetzen.
+### Beispiel: Was bedeutet `192.168.17.64/26`?
+
+`192.168.17.64/26` bezeichnet das Subnetz von `192.168.17.64` bis einschließlich `192.168.17.127`. So leitest du die Grenzen aus der Präfixlänge ab.
+
+1. **Blockgröße berechnen.** Eine IPv4-Adresse hat 32 Bits. Das Präfix `/26` legt die ersten 26 Bits fest. Für Adressen im Subnetz bleiben `32 − 26 = 6` Bits. Jedes davon kann 0 oder 1 sein. Das ergibt `2⁶ = 64` Adressen pro Block.
+2. **Subnetzmaske lesen.** Die ersten 24 Einsen füllen die ersten drei Gruppen mit je acht Bits. Jede davon hat den Dezimalwert 255. In der letzten Gruppe bleiben zwei Einsen für das Präfix und sechs Nullen für die Adressen im Subnetz. `11000000` ergibt `128 + 64 = 192`. Die Maske lautet also `255.255.255.192`.
+3. **Start und Ende bestimmen.** Innerhalb von `192.168.17.0/24` beginnen die vier 64er-Blöcke bei `.0`, `.64`, `.128` und `.192`. Das Beispiel beginnt bei `.64`. Die letzte Adresse liegt bei `64 + 64 − 1 = 127`, direkt vor dem nächsten Block.
+
+| Rolle | Adresse oder Bereich |
+| --- | --- |
+| Netzadresse | `192.168.17.64` bezeichnet das Subnetz. Alle sechs Bits des Hostanteils sind 0. |
+| Adressen für Geräte | `192.168.17.65` bis `192.168.17.126`. Nach Abzug der Netz- und Broadcast-Adresse bleiben `64 − 2 = 62` Adressen. |
+| Broadcast-Adresse | `192.168.17.127` dient für Rundrufe an das Subnetz. Alle sechs Bits des Hostanteils sind 1. |
+| Subnetzmaske | `255.255.255.192`, entsprechend dem CIDR-Präfix `/26`. |
+
+<Aside type="tip" title="Welches Gerät gehört zum Subnetz?">
+`192.168.17.70/26` ist eine Geräteadresse im Block `.64–.127`. Wenn Linux diese Adresse bei `ip -br address` anzeigt, gehört die Schnittstelle zum Netz `192.168.17.64/26`. `192.168.17.130/26` gehört bereits zum nächsten Netz `192.168.17.128/26`. Die Abfrage mit `ip -br address` funktioniert auf RHEL, Debian und SUSE/openSUSE gleich.
+</Aside>
+
+### Private IPv4-Adressen und Loopback
 
 Die IPv4-Bereiche `10.0.0.0/8`, `172.16.0.0/12` und `192.168.0.0/16` sind für **private Netze** reserviert. Router leiten diese Adressen im öffentlichen Internet nicht weiter. Ein Internetrouter verwendet für private IPv4-Netze häufig **NAT** (Network Address Translation). Dabei übersetzt er die interne Absenderadresse, etwa in seine öffentliche IPv4-Adresse. Die Adresse `127.0.0.1` ist die **Loopback-Adresse** und führt zurück zum eigenen Rechner.
 
