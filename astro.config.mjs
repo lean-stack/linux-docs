@@ -4,7 +4,7 @@ import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://linux.lean-stack.rocks/',
+	site: 'https://linux.lean-stack.de/',
 	integrations: [
 		starlight({
 			title: 'Linux Unterlagen',
