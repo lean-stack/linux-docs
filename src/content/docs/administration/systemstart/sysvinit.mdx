@@ -1,0 +1,99 @@
+---
+title: SysVinit und Runlevel
+description: Runlevel, inittab und Init-Skripte verstehen und auf einer Übungs-VM mit SysVinit einsetzen.
+sidebar:
+  order: 6
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**SysVinit** ist ein Init-System. Nach der frühen Startphase übernimmt es als Prozess mit der Nummer 1 (**PID 1**). Es liest `/etc/inittab`, wechselt in einen vorgesehenen Betriebszustand und stößt den Start der zugehörigen Dienste an. Solche Betriebszustände heißen **Runlevel**. Das heutige [systemd](../systemd/) verwendet für vergleichbare Aufgaben Targets.
+
+## Runlevel und Standardzustand
+
+| Runlevel | Typische Bedeutung |
+| --- | --- |
+| `0` | System herunterfahren |
+| `1` | Einzelbenutzer- oder Wartungsmodus mit wenigen Diensten |
+| `2` bis `5` | Mehrbenutzerbetrieb. Welche Dienste starten, hängt von der Distribution und Konfiguration ab. Debian und Devuan verwenden üblicherweise `2` als Standard und behandeln `2` bis `5` in der Grundkonfiguration gleich. RHEL 5 und SUSE Linux Enterprise Server 11 verwendeten typischerweise `3` für Mehrbenutzerbetrieb ohne grafische Anmeldung und `5` mit grafischer Anmeldung. |
+| `6` | System neu starten |
+
+Eine SysVinit-VM auf Debian- oder Devuan-Basis kann in `/etc/inittab` zum Beispiel diese Zeile enthalten:
+
+```text
+id:2:initdefault:
+```
+
+Ein Eintrag besteht aus vier durch Doppelpunkte getrennten Feldern: Kennung, Runlevel, Aktion und auszuführender Befehl. Hier ist `id` die Kennung, `2` der Runlevel und `initdefault` die Aktion, die ihn als Startvorgabe festlegt. Das letzte Feld bleibt leer. Andere Einträge können beispielsweise beim Betreten eines Runlevels ein Skript ausführen oder nach dem Abmelden erneut eine Konsolenanmeldung starten. [Debian-Handbuch zu inittab](https://manpages.debian.org/trixie/sysvinit-core/inittab.5.en.html)
+
+## Praxis: Runlevel anzeigen und wechseln
+
+Verwende eine VM mit **Devuan 6 (Excalibur)**, bei deren Installation SysVinit gewählt wurde. SysVinit ist dort die Standardauswahl. Die Schritte gelten auch für Debian 13 mit `sysvinit-core` als aktivem Init-System. [Devuan-Installationsanleitung](https://www.devuan.org/os/documentation/install-guides/excalibur/install-devuan) · [Debian-Paket sysvinit-core](https://packages.debian.org/trixie/sysvinit-core)
+
+<Aside type="caution" title="An der VM-Konsole arbeiten">
+Ein Runlevel-Wechsel kann Dienste stoppen und Anmeldungen beenden. Öffne die VM-Konsole und speichere deine Arbeit. Prüfe vor der Übung, dass PID 1 tatsächlich auf die SysVinit-Implementierung verweist.
+</Aside>
+
+```bash
+ps -p 1 -o pid,comm,args
+sudo readlink /proc/1/exe
+grep ':initdefault:' /etc/inittab
+runlevel
+```
+
+Bei `runlevel` bedeutet die Ausgabe `N 2`, dass kein vorheriger Runlevel aufgezeichnet ist und das System aktuell in Runlevel 2 läuft. Für die Übung gehen wir von einer VM in Runlevel 2 aus. Wechsle nach 3 und dann zurück:
+
+```bash
+sudo wall "Übung: Das System wechselt jetzt in Runlevel 3."
+sudo telinit 3
+runlevel
+sudo telinit 2
+runlevel
+```
+
+Nach dem Wechsel sind `2 3` und anschließend `3 2` zu erwarten. Auf einer Standardinstallation kann der Wechsel ohne sichtbare Änderung an den laufenden Diensten ablaufen. `telinit` teilt dem Init-Prozess den gewünschten Zustand für die laufende Sitzung mit. Für einen anderen **Standard beim Start** würdest du in `/etc/inittab` mit `sudoedit` den Wert im bestehenden `initdefault`-Eintrag ändern und ihn nach dem Neustart mit `runlevel` prüfen. Für diese Übung bleibt die Startvorgabe bei 2.
+
+Runlevel 1 dient der Wartung an der Konsole. Für ein geplantes Herunterfahren oder einen Neustart ist `shutdown` praktisch, weil es angemeldete Benutzer warnt und eine Frist erlaubt. Auf der Übungs-VM kannst du mit `sudo shutdown -r +5 "Neustart in fünf Minuten"` einen Neustart ankündigen und ihn mit `sudo shutdown -c` wieder absagen. Für das Ausschalten verwendest du auf der SysVinit-VM `sudo shutdown -hP +5 "System wird ausgeschaltet"`. Beim geordneten Herunterfahren werden Dienste über ihre Stop-Aktionen beendet.
+
+## Init-Skripte und Autostart
+
+Ein **Init-Skript** startet und stoppt einen bestimmten Dienst. SysVinit-Distributionen legen diese Skripte meist unter `/etc/init.d/` ab. Die Verzeichnisse für die einzelnen Runlevel enthalten symbolische Links auf die Skripte. Ein Name mit `S` steht für Start, ein Name mit `K` für Stopp. Die Zahl im Namen beeinflusst die Reihenfolge. In Skripten mit **LSB-Kopf** können Zeilen wie `Required-Start` Abhängigkeiten und `Default-Start` die vorgesehenen Start-Runlevel angeben. Die Werkzeuge der Distribution verwalten die Links.
+
+### Beispiel mit cron auf Devuan oder Debian mit SysVinit
+
+Der Dienst [cron](/administration/zeitplanung/cron/) führt zeitgesteuerte Aufgaben aus. Auf der Übungs-VM muss das Paket `cron` vorhanden sein. Bei Bedarf installierst du es mit `sudo apt install cron`. Prüfe den Zustand, stoppe den Dienst kurz und starte ihn wieder:
+
+```bash
+sudo service cron status
+sudo service cron stop
+sudo service cron start
+sudo service cron status
+ls -l /etc/rc2.d/*cron
+```
+
+`service cron start` führt auf dieser VM die Start-Aktion von `/etc/init.d/cron` aus. Die Einstellungen für den nächsten Start änderst du separat. Wenn der Dienst für den Autostart registriert und aktiviert ist, kannst du diesen auf der Übungs-VM vorübergehend deaktivieren und direkt wiederherstellen:
+
+```bash
+sudo update-rc.d cron disable
+ls -l /etc/rc2.d/*cron
+sudo update-rc.d cron enable
+ls -l /etc/rc2.d/*cron
+```
+
+Beobachte, wie sich der Linkname ändert. Der laufende Dienst bleibt dabei aktiv. `update-rc.d DIENST defaults` registriert bei Bedarf die üblichen Runlevel-Links für ein installiertes Init-Skript. [Debian-Handbuch zu update-rc.d](https://manpages.debian.org/trixie/init-system-helpers/update-rc.d.8.en.html)
+
+### Werkzeuge der Distributionen
+
+Die historischen Befehle in der Tabelle beziehen sich auf Systeme, auf denen das jeweilige Init-Skript vorhanden ist. `sshd` ist hier der Dienstname des SSH-Servers in den Beispielen für RHEL und SUSE.
+
+| System | Dienst im laufenden System | Autostart und Pfade |
+| --- | --- | --- |
+| Debian und Devuan mit SysVinit | `sudo service cron start` oder `sudo /etc/init.d/cron start` | `sudo update-rc.d cron enable`. Skripte in `/etc/init.d/`, Runlevel-Links zum Beispiel in `/etc/rc2.d/`. |
+| RHEL 5 | `sudo service sshd start` | `chkconfig --list sshd` zeigt die Zuordnung, `sudo chkconfig --level 35 sshd on` aktiviert den Autostart in Runlevel 3 und 5. Runlevel-Links liegen beispielsweise in `/etc/rc.d/rc3.d/`. |
+| SUSE Linux Enterprise Server 11 | `sudo /etc/init.d/sshd start` | `sudo insserv sshd` registriert das Skript gemäß seiner Kopfzeilen, `sudo insserv -r sshd` entfernt die Registrierung. SUSE bot auch `chkconfig`. Runlevel-Links liegen beispielsweise in `/etc/init.d/rc3.d/`. |
+
+RHEL 6 nutzte bereits **Upstart** als PID 1, behielt aber SysV-kompatible Werkzeuge für entsprechende Dienste. Seit RHEL 7 und SUSE Linux Enterprise Server 12 übernimmt **systemd** den Systemstart. Debian verwendet seit Debian 8 standardmäßig systemd und bietet SysVinit weiterhin als Alternative an. Auf Systemen mit systemd verwaltest du native Dienste mit `systemctl` und den Standardzustand mit `systemctl get-default` oder `systemctl set-default`. Die historischen Werkzeuge und Pfade stehen je nach Version und Paket nur noch als Kompatibilitätshilfe zur Verfügung oder fehlen. [Red Hat zu systemd und Dienstverwaltung](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/system_administrators_guide/chap-managing_services_with_systemd) · [SUSE zu insserv und chkconfig](https://support.scc.suse.com/s/kb/Manipulating-the-start-and-stop-order-of-Linux-services?language=en_US)
+
+## Prüfungsbezug
+
+Die Rolle von SysVinit beim Booten gehört zu **101.2**. Runlevel, Wechsel des Betriebszustands und geordnetes Herunterfahren gehören zu **101.3**. [LPIC-1, Prüfung 101-500, Thema 101](https://www.lpi.org/our-certifications/exam-101-102-objectives/#Topic_101:_System_Architecture)

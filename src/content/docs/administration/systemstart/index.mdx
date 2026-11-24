@@ -21,7 +21,7 @@ Der Start eines Linux-Systems läuft in vier klar getrennten Phasen ab:
 └────────┬────────┘
          │
 ┌────────▼────────┐
-│  4. Init-System │  systemd (PID 1) — Dienste starten
+│  4. Init-System │  PID 1 — Dienste starten
 └─────────────────┘
 ```
 
@@ -47,11 +47,11 @@ das Treiber und Werkzeuge enthält, die vor dem eigentlichen Root-FS gebraucht w
 (z. B. für verschlüsselte Partitionen oder Software-RAID).
 Mehr dazu: [Kernel & initramfs](./kernel)
 
-## Phase 4: Init-System (systemd)
+## Phase 4: Init-System
 
 `systemd` ist heute auf den meisten Distributionen der Init-Prozess (PID 1).
 Er startet alle weiteren Dienste in der konfigurierten Reihenfolge.
-Mehr dazu: [systemd](./systemd)
+Mehr dazu findest du unter [systemd](./systemd) und [SysVinit und Runlevel](./sysvinit/).
 
 ## Distributionsunterschiede
 
