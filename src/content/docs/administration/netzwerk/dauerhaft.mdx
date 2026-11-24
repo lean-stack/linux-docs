@@ -1,0 +1,107 @@
+---
+title: Dauerhafte Netzwerkkonfiguration
+description: Ethernet mit NetworkManager und nmcli per DHCP oder mit einer statischen IPv4-Adresse einrichten.
+sidebar:
+  order: 5
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Mit [`ip` gesetzte Adressen und Routen](../konfiguration/) gelten für das laufende System. **NetworkManager** speichert Einstellungen in einem **Verbindungsprofil** und wendet sie beim Aktivieren des Profils an. Ein Profil enthält beispielsweise den Namen der Netzwerkschnittstelle, die IP-Einstellungen und die Einstellung für den automatischen Verbindungsaufbau. Mit **`nmcli`** verwaltest du diese Profile auf der Kommandozeile.
+
+## Vorbereitung
+
+Die Befehle gelten gemeinsam für RHEL, Debian und SUSE/openSUSE, wenn NetworkManager die Schnittstelle verwaltet. Prüfe zuerst den Dienst, die verfügbaren Geräte und die Profile.
+
+```bash
+systemctl is-active NetworkManager
+nmcli device status
+nmcli connection show
+```
+
+In dieser Übung heißt die Ethernet-Schnittstelle `enp3s0`. Ersetze den Namen in den Befehlen durch den Namen aus der Spalte `DEVICE`. Wenn dort eine Verbindung aktiv ist, notiere ihren Profilnamen aus der Spalte `CONNECTION`. Du kannst später mit `sudo nmcli connection up "Profilname" ifname enp3s0` zu ihr zurückkehren.
+
+| Distribution | Was du auf der Übungs-VM prüfst |
+| --- | --- |
+| RHEL 9 oder 10 | NetworkManager ist der reguläre Netzwerkdienst. Fehlt er auf einem Minimalabbild, installierst du ihn mit `sudo dnf install NetworkManager`. |
+| Debian 13 | Bei Bedarf installierst du das Paket mit `sudo apt install network-manager`. Eine mit ifupdown in `/etc/network/interfaces` oder einer eingebundenen Datei konfigurierte Schnittstelle kann in `nmcli` als `unmanaged` erscheinen. Verwende eine freie Übungsschnittstelle oder eine VM, die bereits mit NetworkManager eingerichtet ist. |
+| openSUSE Leap 16.0 und SUSE Linux Enterprise Server 16.0 | NetworkManager übernimmt die Netzwerkkonfiguration. Auf älteren Systemen wie Leap 15.6 kann stattdessen Wicked aktiv sein. Verwende für das gemeinsame Beispiel eine VM mit NetworkManager. |
+
+Auf einer für NetworkManager vorbereiteten VM kannst du einen inaktiven Dienst mit `sudo systemctl enable --now NetworkManager` starten und für künftige Systemstarts aktivieren. Wenn `nmcli device status` die Schnittstelle als `unmanaged` meldet, kläre zuerst, welcher Dienst sie verwaltet. Ein Gerät sollte für diese Übung von genau einem Netzwerkdienst konfiguriert werden.
+
+<Aside type="caution" title="An der VM-Konsole arbeiten">
+Beim Wechsel des Profils kann die bisherige IP-Adresse entfallen und eine SSH-Verbindung abbrechen. Führe die Änderungen an der lokalen Konsole einer Übungs-VM durch. Für DHCP muss im angeschlossenen Netz ein DHCP-Server erreichbar sein. Für die statische Übung brauchst du die passenden Adressen deines Übungsnetzes und eine freie IP-Adresse.
+</Aside>
+
+## Ethernet mit DHCP
+
+Mit `ipv4.method auto` fordert NetworkManager die IPv4-Einstellungen per DHCP an. Hier legen wir ein eigenes Profil an, das wir zunächst von Hand aktivieren.
+
+```bash
+sudo nmcli connection add type ethernet ifname enp3s0 con-name kurs-dhcp \
+  ipv4.method auto connection.autoconnect no
+sudo nmcli connection up kurs-dhcp ifname enp3s0
+
+nmcli -f GENERAL.CONNECTION,IP4.ADDRESS,IP4.GATEWAY,IP4.DNS device show enp3s0
+```
+
+Die Ausgabe zeigt den Profilnamen und die aktuell verwendeten IPv4-Einstellungen. Welche Adresse, welches Gateway und welche DNS-Server erscheinen, hängt von der Antwort des DHCP-Servers ab.
+
+## Ethernet mit statischer IPv4-Adresse
+
+Wir verwenden Werte aus den [TCP/IP-Grundlagen](../tcp-ip/). In einem vorbereiteten Netz `192.168.17.64/26` bekommt die VM die freie Geräteadresse `192.168.17.70/26`. Der Router ist unter `192.168.17.126` erreichbar. Der DNS-Dienst läuft unter `192.168.17.66`. Übernimm diese Werte nur, wenn Gateway und DNS im Übungsnetz tatsächlich so eingerichtet sind und die Geräteadresse außerhalb des DHCP-Vergabebereichs liegt oder für die VM reserviert ist.
+
+```bash
+sudo nmcli connection add type ethernet ifname enp3s0 con-name kurs-statisch \
+  ipv4.method manual ipv4.addresses 192.168.17.70/26 \
+  ipv4.gateway 192.168.17.126 ipv4.dns 192.168.17.66 \
+  connection.autoconnect no
+sudo nmcli connection up kurs-statisch ifname enp3s0
+```
+
+Das Aktivieren wechselt auf dieser Schnittstelle vom DHCP-Profil zum statischen Profil. Prüfe anschließend, ob Linux die gewünschten Einstellungen verwendet.
+
+```bash
+nmcli -f GENERAL.CONNECTION,IP4.ADDRESS,IP4.GATEWAY,IP4.DNS device show enp3s0
+ip -4 route show default dev enp3s0
+ping -4 -c 3 192.168.17.126
+getent ahostsv4 example.org
+```
+
+Erwartet werden `kurs-statisch`, `192.168.17.70/26`, die Standardroute über `192.168.17.126` und der DNS-Server `192.168.17.66`. Der Ping prüft, ob der Router auf Echo-Anfragen antwortet. `getent` prüft die IPv4-Namensauflösung aus Sicht von Anwendungen. Dafür muss die VM einen Resolver erreichen, der den Beispielnamen auflösen kann.
+
+## Automatisch verbinden und nach Neustart prüfen
+
+Beide Profile bleiben gespeichert. `connection.autoconnect` entscheidet, ob NetworkManager ein Profil selbstständig aktivieren darf. Wenn mehrere passende Profile dafür infrage kommen, bevorzugt NetworkManager die höhere `connection.autoconnect-priority`. Sieh dir vorhandene Profile mit `nmcli -f NAME,DEVICE,AUTOCONNECT,AUTOCONNECT-PRIORITY connection show` an. Wähle auf der Übungs-VM für das gewünschte Profil eine höhere Priorität als für andere Profile dieser Schnittstelle. Wenn deren Priorität beispielsweise 0 ist, genügt 10.
+
+```bash
+sudo nmcli connection modify kurs-statisch \
+  connection.autoconnect yes connection.autoconnect-priority 10
+```
+
+Starte die Übungs-VM an der Konsole neu und prüfe mit `nmcli connection show --active`, ob `kurs-statisch` wieder aktiv ist. Wiederhole die Adress- und Routenprüfung. Wechselst du für die Übung wieder auf DHCP, kannst du das statische Profil vom automatischen Start ausschließen und das DHCP-Profil aktivieren.
+
+```bash
+sudo nmcli connection modify kurs-statisch connection.autoconnect no
+sudo nmcli connection up kurs-dhcp ifname enp3s0
+```
+
+Wenn DHCP künftig automatisch starten soll, aktivierst du `connection.autoconnect yes` für `kurs-dhcp` und prüfst auch dort die Priorität.
+
+## WLAN mit NetworkManager
+
+NetworkManager speichert auch WLAN-Einstellungen in Profilen. Auf einer VM geht das nur mit einem direkt verfügbaren WLAN-Gerät. Virtuelle Ethernet-Schnittstellen erscheinen auch dann als Ethernet, wenn der Host über WLAN verbunden ist.
+
+```bash
+nmcli device wifi list
+sudo nmcli --ask device wifi connect "Kurs-WLAN"
+nmcli connection show --active
+```
+
+Setze den Namen des Übungs-WLANs ein. Bei einem WLAN mit Passwort fragt `--ask` nach den Anmeldedaten. `nmcli` verbindet das Gerät und verwendet oder erstellt ein passendes Profil.
+
+## Weiterführende Themen und Prüfungsbezug
+
+- [Manuelle Netzwerkkonfiguration](../konfiguration/) mit `ip` und ein Beispiel für `systemd-networkd`
+- [Netzwerkdiagnose](../../monitoring/netzwerk/) mit Befehlen zur Fehlersuche
+- [LPIC-1, Prüfung 102-500, Thema 109](https://www.lpi.org/our-certifications/exam-101-102-objectives/#Topic_109:_Networking_Fundamentals) mit Lernziel 109.2 zur dauerhaften Netzwerkkonfiguration
