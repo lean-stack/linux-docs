@@ -1,0 +1,62 @@
+---
+title: Netzwerk-Fehlersuche und Fehlerbehebung
+description: Verbindungsprobleme mit ping, ip route, DNS-Abfragen und Diensttests eingrenzen, beheben und nachprüfen.
+sidebar:
+  order: 6
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Wenn eine Webseite nicht lädt, kann die Ursache an der Schnittstelle, auf dem Weg zum Server, bei der Namensauflösung oder beim Webdienst liegen. Prüfe diese Stationen einzeln. Die Befehle gelten für RHEL, Debian und SUSE/openSUSE. Bei den Schritten mit `nmcli` muss NetworkManager die Schnittstelle verwalten.
+
+## Vom eigenen Rechner bis zum Dienst prüfen
+
+Die Beispiele verwenden `enp3s0` und die Adressen aus der [dauerhaften Netzwerkkonfiguration](../dauerhaft/). Setze den Namen deiner Schnittstelle und die Adressen deines Übungsnetzes ein.
+
+| Station | Befehl | Was du daran erkennst |
+| --- | --- | --- |
+| Schnittstelle | `ip -br link show dev enp3s0` | Gibt es die Schnittstelle? Bei Ethernet weist `LOWER_UP` darauf hin, dass die Verbindung auf der unteren Ebene steht. Bei fehlendem Link prüfst du Kabel oder virtuellen Netzadapter. |
+| IPv4-Adresse | `ip -br -4 address show dev enp3s0` | Hat die Schnittstelle die erwartete Adresse `192.168.17.70/26`? Ein falsches Präfix verändert, welche Ziele Linux als direkt erreichbar behandelt. |
+| Lokales Netz | `ping -4 -c 3 192.168.17.126` | Antwortet der Router im eigenen Subnetz auf Echo-Anfragen? Bei Problemen zeigt `ip -4 neigh show dev enp3s0`, ob Linux die Hardwareadresse eines Nachbarn ermitteln konnte. `INCOMPLETE` oder `FAILED` nach einem Verbindungsversuch deutet darauf hin, dass das nicht gelang. |
+| Routing | `ip -4 route show` und `ip -4 route get 9.9.9.9` | Die erste Abfrage listet die Routen. Die zweite zeigt die für das Ziel gewählte Route, etwa `via 192.168.17.126 dev enp3s0 src 192.168.17.70`. `via` nennt den nächsten Router, `dev` die Schnittstelle und `src` die Absenderadresse. |
+| Entfernte IP-Adresse | `ping -4 -c 3 9.9.9.9` | Eine Antwort zeigt, dass das Ziel ohne Namensauflösung erreichbar ist und auf ICMP-Echo antwortet. |
+| Namensauflösung | `getent ahostsv4 example.org` | Erhält eine Anwendung eine IPv4-Adresse für den Namen? Mit `nmcli -f IP4.DNS device show enp3s0` siehst du die IPv4-DNS-Server, die NetworkManager für das Gerät meldet. |
+| Webdienst | `curl -4 -I --connect-timeout 5 --max-time 10 https://example.org` | Bei einer direkten Verbindung prüfst du Namensauflösung, TCP-Verbindung, TLS und die Antwort des Webdienstes. Eine HTTP-Statuszeile wie `HTTP/2 200` zeigt, dass du eine Antwort auf Anwendungsebene erhalten hast. |
+
+Mit `ip -4 route get 192.168.17.126` kannst du den lokalen Weg mit dem entfernten vergleichen. Der Router selbst ist in diesem Aufbau direkt erreichbar. Bei dieser Abfrage steht deshalb kein `via` in der Ausgabe. Für ein Ziel außerhalb des Netzes greift die Standardroute, wenn keine spezifischere Route passt. `ip route get` fragt nur die Routing-Entscheidung ab und sendet kein Testpaket.
+
+<Aside type="note" title="Ping und Paketweg richtig lesen">
+Eine fehlende Ping-Antwort kann auch durch Filterregeln oder ein Ziel entstehen, das ICMP-Echo ignoriert. Prüfe deshalb bei Bedarf den eigentlichen Dienst. Wenn `tracepath` installiert ist, zeigt `tracepath -4 -n 9.9.9.9` Zwischenstationen an, von denen eine Antwort eintrifft. Lücken in der Ausgabe können entstehen, obwohl spätere Stationen und das Ziel erreichbar sind.
+</Aside>
+
+Für IPv6 prüfst du Adressen und Routen entsprechend mit `ip -br -6 address`, `ip -6 route` und `ip -6 route get ZIELADRESSE`. Bei `ping` wählt `-6` IPv6. Wenn du einen lokalen Dienst auf dem Zielrechner prüfen kannst, zeigt `ss -ltn` dort die TCP-Ports, auf denen Programme auf Verbindungen warten. Eine Bindung an `127.0.0.1` ist nur vom Zielrechner selbst erreichbar.
+
+## Übungsfall: Das Standardgateway ist falsch
+
+**Ausgangslage.** Die VM hat `192.168.17.70/26`. Laut Netzplan ist der Router `192.168.17.126` und der DNS-Server `192.168.17.66`. Der Router antwortet im lokalen Netz, entfernte Ziele sind jedoch nicht erreichbar.
+
+<Aside type="caution" title="An der VM-Konsole arbeiten">
+Für diesen Fall brauchst du eine Übungs-VM mit dem Profil `kurs-statisch`. Die Adresse `192.168.17.125` muss im Übungsnetz frei sein. Wenn du den Fehler selbst nachstellst, ändere die Adresse nur an der VM-Konsole, weil die Verbindung zu entfernten Rechnern dabei ausfallen kann.
+</Aside>
+
+Zum Nachstellen setzt du im Profil ein Gateway, das zwar im richtigen Subnetz liegt, aber zu keinem Router gehört.
+
+```bash
+sudo nmcli connection modify kurs-statisch ipv4.gateway 192.168.17.125
+sudo nmcli connection up kurs-statisch ifname enp3s0
+```
+
+1. **Eingrenzen.** Prüfe die eigene Adresse mit `ip -br -4 address show dev enp3s0`. Teste den Router mit `ping -4 -c 3 192.168.17.126`. Die richtige Adresse und eine Antwort des Routers zeigen, dass die VM ihn direkt erreicht.
+2. **Ursache finden.** Frage mit `ip -4 route get 9.9.9.9` nach dem Weg zu einer entfernten IP-Adresse. Im Fehlerfall erscheint `via 192.168.17.125`. Vergleiche das mit dem Netzplan. Auch wenn der lokale DNS-Server einen Namen auflösen kann, gehen Pakete zu entfernten Adressen über das falsch eingetragene Gateway.
+3. **Dauerhaft korrigieren.** Ändere das gespeicherte Profil und aktiviere es erneut.
+
+```bash
+sudo nmcli connection modify kurs-statisch ipv4.gateway 192.168.17.126
+sudo nmcli connection up kurs-statisch ifname enp3s0
+```
+
+4. **Erfolg prüfen.** Wiederhole `ip -4 route get 9.9.9.9`. Jetzt muss `via 192.168.17.126` erscheinen. Prüfe anschließend mit den Befehlen oben zuerst die entfernte IP-Adresse, dann die Namensauflösung und schließlich HTTPS. Für diese Tests braucht das Übungsnetz einen funktionierenden Internetzugang. `nmcli -g ipv4.gateway connection show kurs-statisch` zeigt, welcher Wert im Profil gespeichert ist.
+
+## Prüfungsbezug
+
+Der Ablauf übt die grundlegende Netzwerk-Fehlersuche aus Lernziel **109.3**. Die Prüfung der Namensauflösung berührt auch Lernziel **109.4**. [LPIC-1, Prüfung 102-500, Thema 109](https://www.lpi.org/our-certifications/exam-101-102-objectives/#Topic_109:_Networking_Fundamentals)
