@@ -75,3 +75,9 @@ rm *.log          # erst dann löschen
 `rm` entfernt den **Verzeichniseintrag** (den Namen), der auf einen Inode zeigt. Der Inode – und damit die eigentlichen Daten auf der Festplatte – wird erst freigegeben, wenn **kein Verzeichniseintrag mehr darauf zeigt** und keine geöffneten Datei-Handles mehr existieren.
 
 Das ist auch die Grundlage für Hard-Links: Solange noch ein weiterer Name auf denselben Inode zeigt, bleiben die Daten erhalten – mehr dazu im nächsten Artikel.
+
+## Prüfungsbezug
+
+LPIC-1, Prüfung **101-500**.
+
+- [Lernziel 103.3](https://www.lpi.org/our-certifications/exam-101-102-objectives/#Topic_103:_GNU_and_Unix_Commands) – Dateien und Verzeichnisse mit `rm` und `rmdir` löschen.
