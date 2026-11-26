@@ -8,4 +8,5 @@
 - [x] Dauerhafte Netzwerkkonfiguration: LPI-Lernziel 109.2 (Prüfung 102-500) über Thema 109 verlinkt.
 - [x] Netzwerk-Fehlersuche und Fehlerbehebung: LPI-Lernziele 109.3 und 109.4 (Prüfung 102-500) über Thema 109 verlinkt.
 - [x] Grundlagen – Dateien, Verzeichnisse und Suche: Prüfungsbezug auf 13 Fachseiten ergänzt.
+- [x] Grundlagen – Shell, Hilfe in der Shell, Ein-/Ausgabe, Filter und vi/Vim: Prüfungsbezug auf 9 Fachseiten ergänzt.
 - [ ] Weitere Verweise kapitelweise ergänzen, wenn die jeweiligen Inhalte bearbeitet werden.
